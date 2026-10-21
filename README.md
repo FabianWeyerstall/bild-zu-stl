@@ -9,7 +9,7 @@ Alles läuft im Browser, das Bild wird nirgendwo hochgeladen.
 ## So funktioniert's
 
 1. Bild hochladen (PNG, JPG, …). Dunkle Bereiche werden zu Öffnungen, durch die gemalt wird (umkehrbar).
-2. Breite in mm einstellen, die Höhe folgt dem Seitenverhältnis. Optional einen Rand um das Bild.
+2. Breite in mm einstellen (Zahl oder Schieberegler), die Höhe folgt dem Seitenverhältnis. Die App zeigt, wie viele Druckplatten das ergibt, und bietet Knöpfe für die größte Breite je Plattenzahl. Optional einen Rand um das Bild.
 3. Dicke (0,2, 0,4 oder 0,6 mm) und Markerbreite wählen.
 4. Vorschau prüfen, dann **STL exportieren**.
 

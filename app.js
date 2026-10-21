@@ -89,17 +89,78 @@
   // --- Seitenverhältnis halten -------------------------------------------
 
   const aspect = () => (image ? image.naturalHeight / image.naturalWidth : 0.75);
-  function syncHeight() { ui.height.value = Math.round(num(ui.width, 400) * aspect()); }
-  function syncWidth() { ui.width.value = Math.round(num(ui.height, 300) / aspect()); }
+  function syncHeight() { ui.height.value = Math.round(num(ui.width, 400) * aspect()); syncPlates(); }
+  function syncWidth() { ui.width.value = Math.round(num(ui.height, 300) / aspect()); syncPlates(); }
   ui.width.addEventListener('input', () => { syncHeight(); schedule(); });
   ui.height.addEventListener('input', () => { syncWidth(); schedule(); });
+  $('widthRange').addEventListener('input', (e) => { ui.width.value = e.target.value; syncHeight(); schedule(); });
+
+  // --- Plattenaufteilung: wie viele Druckplatten ergibt welche Breite? ----
+
+  const BED = 256;
+  function plateGeometry() {
+    const s = readSettings();
+    const margin = s.borderMM + s.tabMM;
+    const knobLen = KNOB.neckL + 2 * KNOB.knobR;
+    const tiles = (size) => (size <= s.maxTileMM ? 1 : Math.ceil(size / (s.maxTileMM - knobLen)));
+    // größte Gesamtlänge, die noch in n Kacheln passt (1 mm Reserve für Rundung)
+    const cap = (n) => (n === 1 ? s.maxTileMM : n * (s.maxTileMM - knobLen)) - 1;
+    return { s, margin, tiles, cap };
+  }
+  function platesFor(width) {
+    const { margin, tiles } = plateGeometry();
+    const tw = width + 2 * margin, th = width * aspect() + 2 * margin;
+    const nx = tiles(tw), ny = tiles(th);
+    return { nx, ny, n: nx * ny, use: (tw * th) / (nx * ny * BED * BED) };
+  }
+  function sweetSpots() {
+    const { margin, cap } = plateGeometry();
+    const a = aspect();
+    const best = new Map();
+    for (let c = 1; c <= 8; c++) {
+      for (let r = 1; r <= 8; r++) {
+        const w = Math.floor(Math.min(cap(c) - 2 * margin, (cap(r) - 2 * margin) / a));
+        if (w < 30) continue;
+        const p = platesFor(w);
+        if (p.n > 36) continue;
+        if (!best.has(p.n) || best.get(p.n).w < w) best.set(p.n, { w, ...p });
+      }
+    }
+    // nur Stufen, bei denen mehr Platten auch mehr Größe bringen
+    const list = [...best.values()].sort((x, y) => x.n - y.n);
+    const out = [];
+    for (const e of list) if (!out.length || e.w > out[out.length - 1].w * 1.05) out.push(e);
+    return out;
+  }
+  function syncPlates() {
+    const w = num(ui.width, 400);
+    const range = $('widthRange');
+    range.max = Math.max(1500, Math.ceil(w));
+    range.value = w;
+    const p = platesFor(w);
+    $('plateInfo').textContent = `${p.nx} × ${p.ny} = ${p.n} Platte${p.n === 1 ? '' : 'n'} · Platten zu ${Math.round(p.use * 100)} % genutzt`;
+    const spots = sweetSpots();
+    $('sweetSpots').innerHTML = spots.map((e) => `<option value="${e.w}"></option>`).join('');
+    const box = $('fitButtons');
+    box.innerHTML = '';
+    for (const e of spots) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.innerHTML = `<b>${e.n}</b> ${e.n === 1 ? 'Platte' : 'Platten'}: ${e.w} mm`;
+      b.title = `${e.n} ${e.n === 1 ? 'Platte' : 'Platten'} (${e.nx} × ${e.ny}), Breite bis ${e.w} mm`;
+      if (e.n === p.n) b.classList.add('active');
+      b.addEventListener('click', () => { ui.width.value = e.w; syncHeight(); schedule(0); });
+      box.appendChild(b);
+    }
+  }
 
   ui.threshold.addEventListener('input', () => { ui.thresholdOut.textContent = ui.threshold.value; schedule(); });
   document.querySelectorAll('#settings input, #settings select').forEach((el) => {
-    if (el === ui.width || el === ui.height || el === ui.threshold || el === ui.file || el.id === 'format') return;
-    el.addEventListener('change', () => schedule());
+    if (el === ui.width || el === ui.height || el === ui.threshold || el === ui.file || el.id === 'format' || el.id === 'widthRange') return;
+    el.addEventListener('change', () => { syncPlates(); schedule(); });
   });
   ui.overlay.addEventListener('change', () => result && render());
+  syncPlates();
   const syncThinHint = () => { $('thinHint').hidden = radio('thick') > 0.25; };
   document.querySelectorAll('input[name=thick]').forEach((el) => el.addEventListener('change', syncThinHint));
 

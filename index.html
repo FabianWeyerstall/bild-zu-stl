@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Bild zu STL</title>
   <meta name="description" content="Erzeugt aus einem Bild eine 3D-druckbare Schablone (STL) zum Nachmalen mit Kreidemarkern auf Glas und Wänden.">
-  <link rel="stylesheet" href="style.css?v=9">
+  <link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
   <header>
@@ -28,6 +28,13 @@
         <div class="row">
           <label>Breite (mm)<input type="number" id="width" value="400" min="20" max="5000" step="1"></label>
           <label>Höhe (mm)<input type="number" id="height" value="300" min="20" max="5000" step="1"></label>
+        </div>
+        <input type="range" id="widthRange" min="50" max="1500" step="1" value="400" list="sweetSpots" aria-label="Breite">
+        <datalist id="sweetSpots"></datalist>
+        <p class="plates" id="plateInfo"></p>
+        <div class="fit">
+          <span class="hint">An Druckplatten anpassen (größte Breite je Plattenzahl):</span>
+          <div class="fitButtons" id="fitButtons"></div>
         </div>
         <label>Rand um das Bild (mm)<input type="number" id="border" value="10" min="0" max="100" step="1"></label>
         <label class="check"><input type="checkbox" id="tabs">Klebelaschen am Außenrand</label>
@@ -116,11 +123,11 @@
     <p>Tipp für Bambu Studio: Schichthöhe 0,2 mm, erste Schicht 0,2 mm. Die Kacheln stecken mit den Puzzle-Verbindern zusammen. <a href="https://github.com/FabianWeyerstall/bild-zu-stl">Quellcode</a></p>
   </footer>
 
-  <script src="vendor/earcut.min.js?v=9"></script>
-  <script src="vendor/jszip.min.js?v=9"></script>
-  <script src="stencil.js?v=9"></script>
-  <script src="vendor/bambu-project-settings.js?v=9"></script>
-  <script src="threemf.js?v=9"></script>
-  <script src="app.js?v=9"></script>
+  <script src="vendor/earcut.min.js?v=10"></script>
+  <script src="vendor/jszip.min.js?v=10"></script>
+  <script src="stencil.js?v=10"></script>
+  <script src="vendor/bambu-project-settings.js?v=10"></script>
+  <script src="threemf.js?v=10"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>
