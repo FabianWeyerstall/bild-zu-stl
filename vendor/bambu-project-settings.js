@@ -1,6 +1,6 @@
 /*
- * Projekteinstellungen für den 3MF-Export (aus einem leeren Bambu Studio 2.07-Projekt
- * mit X1 Carbon 0.4 nozzle). Schichthöhe auf 0,2 mm gesetzt, passend zu 0,2/0,4/0,6 mm Dicke.
+ * Projekteinstellungen für den 3MF-Export (aus einem leeren Bambu Studio 2.07-Projekt:
+ * X1 Carbon 0.4 nozzle, Druckprofil "0.20mm Standard @BBL X1C").
  * Mit diesen Einstellungen öffnet Bambu Studio die Datei als Projekt mit allen Platten.
  */
 self.BAMBU_PROJECT_SETTINGS = {
@@ -194,7 +194,7 @@ self.BAMBU_PROJECT_SETTINGS = {
   "50"
  ],
  "different_settings_to_system": [
-  "layer_height",
+  "",
   "",
   "close_additional_fan_first_x_layers;close_fan_the_first_x_layers;default_filament_colour;eng_plate_temp;eng_plate_temp_initial_layer;fan_max_speed;filament_cost;filament_shrink;hot_plate_temp_initial_layer;nozzle_temperature_range_high;nozzle_temperature_range_low;reduce_fan_stop_start_freq;textured_plate_temp_initial_layer",
   "",
@@ -1130,8 +1130,8 @@ self.BAMBU_PROJECT_SETTINGS = {
  "fuzzy_skin_scale": "1",
  "fuzzy_skin_thickness": "0.3",
  "gap_infill_speed": [
-  "200",
-  "200"
+  "250",
+  "250"
  ],
  "gcode_add_line_number": "0",
  "gcode_flavor": "marlin",
@@ -1252,8 +1252,8 @@ self.BAMBU_PROJECT_SETTINGS = {
  "inner_wall_jerk": "9",
  "inner_wall_line_width": "0.45",
  "inner_wall_speed": [
-  "200",
-  "200"
+  "300",
+  "400"
  ],
  "interface_shells": "0",
  "interlocking_beam": "0",
@@ -1266,8 +1266,8 @@ self.BAMBU_PROJECT_SETTINGS = {
  "internal_solid_infill_line_width": "0.42",
  "internal_solid_infill_pattern": "zig-zag",
  "internal_solid_infill_speed": [
-  "200",
-  "200"
+  "250",
+  "350"
  ],
  "ironing_direction": "45",
  "ironing_fan_speed": [
@@ -1497,7 +1497,7 @@ self.BAMBU_PROJECT_SETTINGS = {
  "outer_wall_line_width": "0.42",
  "outer_wall_speed": [
   "200",
-  "200"
+  "350"
  ],
  "overhang_1_4_speed": [
   "0",
@@ -1538,7 +1538,7 @@ self.BAMBU_PROJECT_SETTINGS = {
  ],
  "overhang_totally_speed": [
   "10",
-  "10"
+  "30"
  ],
  "override_filament_scarf_seam_setting": "0",
  "override_process_overhang_speed": [
@@ -1601,7 +1601,7 @@ self.BAMBU_PROJECT_SETTINGS = {
  "print_flow_ratio": "1",
  "print_in_clockwise": "0",
  "print_sequence": "by layer",
- "print_settings_id": "0.28mm Extra Draft @BBL X1C",
+ "print_settings_id": "0.20mm Standard @BBL X1C",
  "printable_area": [
   "0x0",
   "256x0",
@@ -1800,8 +1800,8 @@ self.BAMBU_PROJECT_SETTINGS = {
  "sparse_infill_line_width": "0.45",
  "sparse_infill_pattern": "grid",
  "sparse_infill_speed": [
-  "200",
-  "200"
+  "270",
+  "370"
  ],
  "spiral_mode": "0",
  "spiral_mode_max_xy_smoothing": "200%",
@@ -1865,7 +1865,7 @@ self.BAMBU_PROJECT_SETTINGS = {
   "150"
  ],
  "support_style": "default",
- "support_threshold_angle": "40",
+ "support_threshold_angle": "30",
  "support_top_z_distance": "0.2",
  "support_type": "tree(auto)",
  "symmetric_infill_y_axis": "0",
@@ -1898,9 +1898,9 @@ self.BAMBU_PROJECT_SETTINGS = {
  "time_lapse_gcode": ";========Date 20250206========\n; SKIPPABLE_START\n; SKIPTYPE: timelapse\nM622.1 S1 ; for prev firmware, default turned on\nM1002 judge_flag timelapse_record_flag\nM622 J1\n{if timelapse_type == 0} ; timelapse without wipe tower\nM971 S11 C10 O0\nM1004 S5 P1  ; external shutter\n{elsif timelapse_type == 1} ; timelapse with wipe tower\nG92 E0\nG1 X65 Y245 F20000 ; move to safe pos\nG17\nG2 Z{layer_z} I0.86 J0.86 P1 F20000\nG1 Y265 F3000\nM400\nM1004 S5 P1  ; external shutter\nM400 P300\nM971 S11 C10 O0\nG92 E0\nG1 X100 F5000\nG1 Y255 F20000\n{endif}\nM623\n; SKIPPABLE_END\n",
  "timelapse_type": "0",
  "top_area_threshold": "200%",
- "top_color_penetration_layers": "4",
+ "top_color_penetration_layers": "5",
  "top_one_wall_type": "all top",
- "top_shell_layers": "4",
+ "top_shell_layers": "5",
  "top_shell_thickness": "1",
  "top_solid_infill_flow_ratio": [
   "1",
@@ -1912,11 +1912,11 @@ self.BAMBU_PROJECT_SETTINGS = {
  ],
  "top_surface_density": "100%",
  "top_surface_jerk": "9",
- "top_surface_line_width": "0.45",
+ "top_surface_line_width": "0.42",
  "top_surface_pattern": "monotonicline",
  "top_surface_speed": [
   "200",
-  "200"
+  "300"
  ],
  "top_z_overrides_xy_distance": "0",
  "travel_acceleration": [
@@ -1994,7 +1994,7 @@ self.BAMBU_PROJECT_SETTINGS = {
   "165"
  ],
  "wipe_tower_y": [
-  "219.984"
+  "216.972"
  ],
  "wrapping_detection_gcode": "",
  "wrapping_detection_layers": "20",
