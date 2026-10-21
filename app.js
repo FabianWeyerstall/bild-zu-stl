@@ -49,7 +49,7 @@
       minStegMM: Math.max(0.8, num(ui.minSteg, 2)),
       bridgeMM: Math.max(0.8, num(ui.bridge, 2)),
       cornerMM: Math.max(0, num(ui.corner, 1)),
-      maxTileMM: Math.min(Math.min(...bed()), Math.max(60, num(ui.maxTile, 240))),
+      maxTileMM: Math.min(tileLimit(), Math.max(60, num(ui.maxTile, 240))),
       clearanceMM: Math.max(0.05, num(ui.clearance, 0.2)),
     };
     const totalW = s.widthMM + 2 * s.borderMM, totalH = s.heightMM + 2 * s.borderMM;
@@ -158,7 +158,9 @@
   const PROJECTS = { a1: self.BAMBU_PROJECT_SETTINGS_A1, a1mini: self.BAMBU_PROJECT_SETTINGS_A1MINI, h2d: self.BAMBU_PROJECT_SETTINGS_H2D };
   const ownProject = () => PROJECTS[$('printer').value.split(':')[1]];
   const projectSettings = () => ownProject() || self.BAMBU_PROJECT_SETTINGS;
-  const tileForBed = () => Math.min(...bed()) - 16;
+  // Größte Kachel für den gewählten Drucker; X1C und P1 haben vorne links eine gesperrte Ecke (18 × 28 mm)
+  const tileForBed = () => +($('printer').selectedOptions[0]?.dataset.tile || Math.min(...bed()) - 16);
+  const tileLimit = () => ($('printer').selectedOptions[0]?.dataset.tile ? tileForBed() : Math.min(...bed()));
   $('printer').addEventListener('change', () => { ui.maxTile.value = tileForBed(); saveSettings(); });
   function plateGeometry() {
     const s = readSettings();
@@ -339,6 +341,7 @@
     ui.thresholdOut.textContent = ui.threshold.value;
   }
   restoreSettings();
+  if (num(ui.maxTile, 240) > tileLimit()) ui.maxTile.value = tileLimit();
   syncHeight();
   storable().forEach((el) => { el.addEventListener('change', saveSettings); el.addEventListener('input', saveSettings); });
   $('resetSettings').addEventListener('click', () => {
@@ -609,11 +612,14 @@
         setStatus('Packe 3MF …');
         const zip = new JSZip();
         const files = ThreeMF.build(parts, imageName, projectSettings());
+        const misfit = files.misfits || [];
+        delete files.misfits;
         for (const [path, text] of Object.entries(files)) zip.file(path, text);
         const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 }, mimeType: 'model/3mf' });
         download(blob, `${imageName}.3mf`);
         const other = !ownProject() && bed()[0] !== 256 ? ' Die Datei ist für den X1C eingerichtet: In Bambu Studio oben links deinen Drucker wählen und kurz prüfen, ob jede Kachel auf ihrer Platte liegt.' : '';
         setStatus((single ? '3MF heruntergeladen.' : `3MF mit ${parts.length} Platten heruntergeladen. In Bambu Studio öffnen und „Alle Platten slicen“.`) + other);
+        if (misfit.length) setStatus(`Achtung: ${misfit.join(', ')} ${misfit.length === 1 ? 'passt' : 'passen'} nicht ganz aufs Druckbett. Bitte „Max. Kachelgröße“ unter „Erweitert“ verkleinern und neu exportieren.`);
       } else if (single) {
         download(new Blob([Stencil.trianglesToSTL(parts[0].tris, parts[0].name)], { type: 'model/stl' }), `${imageName}.stl`);
         setStatus('STL heruntergeladen.');

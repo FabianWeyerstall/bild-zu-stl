@@ -58,6 +58,8 @@
     const [bedW, bedH] = bedSize(settings);
     // Bambu Studio: Abstand der Platten = Plattengröße + 1/5
     const strideX = bedW * 1.2, strideY = bedH * 1.2;
+    const boxes = excludeBoxes(settings);
+    const misfits = [];
     const objects = [];
     const items = [];
     const cfgObjects = [];
@@ -74,8 +76,10 @@
 
       // Auf die Mitte der eigenen Platte setzen
       const col = k % cols, row = Math.floor(k / cols);
-      const tx = col * strideX + bedW / 2 - part.width / 2;
-      const ty = -row * strideY + bedH / 2 - part.height / 2;
+      const spot = placeOnPlate(part.width, part.height, bedW, bedH, boxes);
+      if (!spot.fits) misfits.push(part.name);
+      const tx = col * strideX + spot.x;
+      const ty = -row * strideY + spot.y;
       items.push(`<item objectid="${id}" transform="1 0 0 0 1 0 0 0 1 ${num(tx)} ${num(ty)} 0" printable="1"/>`);
 
       cfgObjects.push(`  <object id="${id}">\n    <metadata key="name" value="${esc(part.name)}"/>\n    <metadata key="extruder" value="1"/>\n  </object>`);
@@ -109,8 +113,31 @@
     };
     // Ohne Projekteinstellungen lädt Bambu Studio nur die Geometrie und legt alles auf Platte 1
     if (settings) files['Metadata/project_settings.config'] = JSON.stringify(settings, null, 4) + '\n';
+    Object.defineProperty(files, 'misfits', { value: misfits, enumerable: false, configurable: true });
     return files;
   }
 
-  return { build, plateColumns, bedSize };
+  // Gesperrte Bereiche des Betts (X1C/P1: Ecke vorne links für den Abstreifer)
+  function excludeBoxes(settings) {
+    const area = settings && settings.bed_exclude_area;
+    if (!Array.isArray(area) || area.length < 3) return [];
+    const pts = area.map((p) => String(p).split('x').map(Number));
+    const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+    const box = { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) };
+    return box.x1 > box.x0 && box.y1 > box.y0 ? [box] : [];
+  }
+
+  // Lage auf der Platte: möglichst mittig, aber außerhalb gesperrter Bereiche
+  function placeOnPlate(w, h, bedW, bedH, boxes) {
+    const M = 1; // Abstand zum Plattenrand
+    const xs = [(bedW - w) / 2, bedW - w - M, M], ys = [(bedH - h) / 2, bedH - h - M, M];
+    const hits = (x, y) => boxes.some((b) => x < b.x1 && x + w > b.x0 && y < b.y1 && y + h > b.y0);
+    for (const y of ys) for (const x of xs) {
+      if (x < 0 || y < 0 || x + w > bedW || y + h > bedH) continue;
+      if (!hits(x, y)) return { x, y, fits: true };
+    }
+    return { x: (bedW - w) / 2, y: (bedH - h) / 2, fits: false };
+  }
+
+  return { build, plateColumns, bedSize, placeOnPlate };
 });

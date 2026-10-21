@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Bild zu STL</title>
   <meta name="description" content="Erzeugt aus einem Bild eine 3D-druckbare Schablone (STL) zum Nachmalen mit Kreidemarkern auf Glas und Wänden.">
-  <link rel="icon" href="favicon.ico?v=18" sizes="any">
-  <link rel="icon" href="favicon-32.png?v=18" type="image/png" sizes="32x32">
-  <link rel="icon" href="favicon.svg?v=18" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=18">
-  <link rel="stylesheet" href="style.css?v=18">
+  <link rel="icon" href="favicon.ico?v=19" sizes="any">
+  <link rel="icon" href="favicon-32.png?v=19" type="image/png" sizes="32x32">
+  <link rel="icon" href="favicon.svg?v=19" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=19">
+  <link rel="stylesheet" href="style.css?v=19">
 </head>
 <body>
   <header>
@@ -32,7 +32,7 @@
         <h2>2. Größe</h2>
         <label>Drucker
           <select id="printer">
-            <option value="256x256" selected>Bambu Lab X1C, X1E, P1S, P1P, P2S (256 × 256 mm)</option>
+            <option value="256x256" data-tile="236" selected>Bambu Lab X1C, X1E, P1S, P1P, P2S (256 × 256 mm)</option>
             <option value="256x256:a1">Bambu Lab A1 (256 × 256 mm)</option>
             <option value="180x180:a1mini">Bambu Lab A1 mini (180 × 180 mm)</option>
             <option value="340x320">Bambu Lab H2S (340 × 320 mm)</option>
@@ -94,9 +94,9 @@
         <summary>Erweitert</summary>
         <label>Mindest-Stegbreite (mm)<input type="number" id="minSteg" value="2" min="0.8" max="10" step="0.1"></label>
         <label>Breite der Haltestege (mm)<input type="number" id="bridge" value="2" min="0.8" max="10" step="0.1"></label>
-        <label>Max. Kachelgröße (mm)<input type="number" id="maxTile" value="240" min="60" max="340" step="1"></label>
+        <label>Max. Kachelgröße (mm)<input type="number" id="maxTile" value="236" min="60" max="340" step="1"></label>
         <label>Spiel der Puzzle-Verbinder (mm)<input type="number" id="clearance" value="0.2" min="0.05" max="1" step="0.05"></label>
-        <p class="hint">Wird bei der Druckerauswahl gesetzt: kürzere Bettseite minus 16 mm Rand.</p>
+        <p class="hint">Wird bei der Druckerauswahl gesetzt: kürzere Bettseite minus 16 mm Rand (X1C/P1: 236 mm wegen der gesperrten Ecke vorne links).</p>
         <p class="hint">Deine Einstellungen werden in diesem Browser gespeichert.</p>
         <button type="button" id="resetSettings" class="secondary">Einstellungen zurücksetzen</button>
       </details>
@@ -141,14 +141,14 @@
     <p>Tipp für Bambu Studio: Schichthöhe 0,2 mm, erste Schicht 0,2 mm. Die Kacheln stecken mit den Puzzle-Verbindern zusammen. <a href="https://github.com/FabianWeyerstall/bild-zu-stl">Quellcode</a></p>
   </footer>
 
-  <script src="vendor/earcut.min.js?v=18"></script>
-  <script src="vendor/jszip.min.js?v=18"></script>
-  <script src="stencil.js?v=18"></script>
-  <script src="vendor/bambu-project-settings.js?v=18"></script>
-  <script src="vendor/bambu-project-settings-a1.js?v=18"></script>
-  <script src="vendor/bambu-project-settings-a1mini.js?v=18"></script>
-  <script src="vendor/bambu-project-settings-h2d.js?v=18"></script>
-  <script src="threemf.js?v=18"></script>
-  <script src="app.js?v=18"></script>
+  <script src="vendor/earcut.min.js?v=19"></script>
+  <script src="vendor/jszip.min.js?v=19"></script>
+  <script src="stencil.js?v=19"></script>
+  <script src="vendor/bambu-project-settings.js?v=19"></script>
+  <script src="vendor/bambu-project-settings-a1.js?v=19"></script>
+  <script src="vendor/bambu-project-settings-a1mini.js?v=19"></script>
+  <script src="vendor/bambu-project-settings-h2d.js?v=19"></script>
+  <script src="threemf.js?v=19"></script>
+  <script src="app.js?v=19"></script>
 </body>
 </html>
