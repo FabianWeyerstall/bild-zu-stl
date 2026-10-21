@@ -43,7 +43,8 @@
    * parts: [{ name, tris: Float32Array, width, height }]  (Maße in mm, Netz ab Ursprung)
    * Liefert die Dateien des 3MF-Pakets als { pfad: text }.
    */
-  function build(parts, title) {
+  function build(parts, title, settings) {
+    const version = (settings && settings.version) || '02.07.01.62';
     const cols = plateColumns(parts.length);
     const objects = [];
     const items = [];
@@ -66,12 +67,12 @@
       items.push(`<item objectid="${id}" transform="1 0 0 0 1 0 0 0 1 ${num(tx)} ${num(ty)} 0" printable="1"/>`);
 
       cfgObjects.push(`  <object id="${id}">\n    <metadata key="name" value="${esc(part.name)}"/>\n    <metadata key="extruder" value="1"/>\n  </object>`);
-      plates.push(`  <plate>\n    <metadata key="plater_id" value="${id}"/>\n    <metadata key="plater_name" value="${esc(part.name)}"/>\n    <metadata key="locked" value="false"/>\n    <model_instance>\n      <metadata key="object_id" value="${id}"/>\n      <metadata key="instance_id" value="0"/>\n      <metadata key="identify_id" value="${id}"/>\n    </model_instance>\n  </plate>`);
+      plates.push(`  <plate>\n    <metadata key="plater_id" value="${id}"/>\n    <metadata key="plater_name" value="${esc(part.name)}"/>\n    <metadata key="locked" value="false"/>\n    <metadata key="filament_map_mode" value="Auto For Flush"/>\n    <model_instance>\n      <metadata key="object_id" value="${id}"/>\n      <metadata key="instance_id" value="0"/>\n      <metadata key="identify_id" value="${id}"/>\n    </model_instance>\n  </plate>`);
     });
 
     const model = '<?xml version="1.0" encoding="UTF-8"?>\n' +
       '<model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02" xmlns:BambuStudio="http://schemas.bambulab.com/package/2021">\n' +
-      ' <metadata name="Application">BambuStudio-01.09.00.00</metadata>\n' +
+      ` <metadata name="Application">BambuStudio-${esc(version)}</metadata>\n` +
       ' <metadata name="BambuStudio:3mfVersion">1</metadata>\n' +
       ` <metadata name="Title">${esc(title || 'Schablone')}</metadata>\n` +
       ' <metadata name="Designer">Bild zu STL</metadata>\n' +
@@ -81,7 +82,7 @@
 
     const config = '<?xml version="1.0" encoding="UTF-8"?>\n<config>\n' + cfgObjects.join('\n') + '\n' + plates.join('\n') + '\n</config>\n';
 
-    return {
+    const files = {
       '[Content_Types].xml': '<?xml version="1.0" encoding="UTF-8"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
         '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
         '<Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/>' +
@@ -91,7 +92,12 @@
         '<Relationship Target="/3D/3dmodel.model" Id="rel-1" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>\n',
       '3D/3dmodel.model': model,
       'Metadata/model_settings.config': config,
+      'Metadata/slice_info.config': '<?xml version="1.0" encoding="UTF-8"?>\n<config>\n  <header>\n    <header_item key="X-BBL-Client-Type" value="slicer"/>\n' +
+        `    <header_item key="X-BBL-Client-Version" value="${esc(version)}"/>\n  </header>\n</config>\n`,
     };
+    // Ohne Projekteinstellungen lädt Bambu Studio nur die Geometrie und legt alles auf Platte 1
+    if (settings) files['Metadata/project_settings.config'] = JSON.stringify(settings, null, 4) + '\n';
+    return files;
   }
 
   return { build, plateColumns };

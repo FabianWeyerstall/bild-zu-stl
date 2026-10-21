@@ -361,7 +361,7 @@
       if (as3mf) {
         setStatus('Packe 3MF …');
         const zip = new JSZip();
-        const files = ThreeMF.build(parts, imageName);
+        const files = ThreeMF.build(parts, imageName, self.BAMBU_PROJECT_SETTINGS);
         for (const [path, text] of Object.entries(files)) zip.file(path, text);
         const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 }, mimeType: 'model/3mf' });
         download(blob, `${imageName}.3mf`);
