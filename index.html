@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Bild zu STL</title>
   <meta name="description" content="Erzeugt aus einem Bild eine 3D-druckbare Schablone (STL) zum Nachmalen mit Kreidemarkern auf Glas und Wänden.">
-  <link rel="stylesheet" href="style.css?v=5">
+  <link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
   <header>
@@ -38,8 +38,10 @@
         <h2>3. Schablone</h2>
         <fieldset>
           <legend>Dicke</legend>
+          <label class="pill"><input type="radio" name="thick" value="0.2">0,2 mm</label>
           <label class="pill"><input type="radio" name="thick" value="0.4" checked>0,4 mm</label>
           <label class="pill"><input type="radio" name="thick" value="0.6">0,6 mm</label>
+          <p class="hint" id="thinHint" hidden>0,2 mm ist nur eine Druckschicht: sehr biegsam, aber empfindlich. Schichthöhe 0,2 mm, glatte PEI-Platte, vorsichtig ablösen. Breitere Stege (2,5–3 mm) unter „Erweitert“ helfen.</p>
         </fieldset>
         <fieldset>
           <legend>Markerbreite (kleinste Öffnung)</legend>
@@ -108,9 +110,9 @@
     <p>Tipp für Bambu Studio: Schichthöhe 0,2 mm, erste Schicht 0,2 mm. Die Kacheln stecken mit den Puzzle-Verbindern zusammen. <a href="https://github.com/FabianWeyerstall/bild-zu-stl">Quellcode</a></p>
   </footer>
 
-  <script src="vendor/earcut.min.js?v=5"></script>
-  <script src="vendor/jszip.min.js?v=5"></script>
-  <script src="stencil.js?v=5"></script>
-  <script src="app.js?v=5"></script>
+  <script src="vendor/earcut.min.js?v=6"></script>
+  <script src="vendor/jszip.min.js?v=6"></script>
+  <script src="stencil.js?v=6"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>

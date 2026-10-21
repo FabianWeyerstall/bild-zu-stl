@@ -10,7 +10,7 @@ Alles läuft im Browser, das Bild wird nirgendwo hochgeladen.
 
 1. Bild hochladen (PNG, JPG, …). Dunkle Bereiche werden zu Öffnungen, durch die gemalt wird (umkehrbar).
 2. Breite in mm einstellen, die Höhe folgt dem Seitenverhältnis. Optional einen Rand um das Bild.
-3. Dicke (0,4 oder 0,6 mm) und Markerbreite wählen.
+3. Dicke (0,2, 0,4 oder 0,6 mm) und Markerbreite wählen.
 4. Vorschau prüfen, dann **STL exportieren**.
 
 Die App passt das Bild automatisch an:

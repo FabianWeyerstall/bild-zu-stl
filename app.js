@@ -100,6 +100,8 @@
     el.addEventListener('change', () => schedule());
   });
   ui.overlay.addEventListener('change', () => result && render());
+  const syncThinHint = () => { $('thinHint').hidden = radio('thick') > 0.25; };
+  document.querySelectorAll('input[name=thick]').forEach((el) => el.addEventListener('change', syncThinHint));
 
   // --- Berechnung ---------------------------------------------------------
 
