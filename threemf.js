@@ -9,8 +9,17 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  const BED = 256; // Bambu Lab X1C
-  const PLATE_STRIDE = BED * 1.2; // Bambu Studio: Abstand der Platten = Plattengröße + 1/5
+  const DEFAULT_BED = [256, 256]; // Bambu Lab X1C
+
+  // Druckbett aus den Projekteinstellungen ("0x0","256x0","256x256","0x256")
+  function bedSize(settings) {
+    const area = settings && settings.printable_area;
+    if (!Array.isArray(area) || !area.length) return DEFAULT_BED;
+    const pts = area.map((p) => String(p).split('x').map(Number));
+    const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+    const w = Math.max(...xs) - Math.min(...xs), h = Math.max(...ys) - Math.min(...ys);
+    return w > 0 && h > 0 ? [w, h] : DEFAULT_BED;
+  }
 
   const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const num = (v) => (Math.round(v * 10000) / 10000).toString();
@@ -46,6 +55,9 @@
   function build(parts, title, settings) {
     const version = (settings && settings.version) || '02.07.01.62';
     const cols = plateColumns(parts.length);
+    const [bedW, bedH] = bedSize(settings);
+    // Bambu Studio: Abstand der Platten = Plattengröße + 1/5
+    const strideX = bedW * 1.2, strideY = bedH * 1.2;
     const objects = [];
     const items = [];
     const cfgObjects = [];
@@ -62,8 +74,8 @@
 
       // Auf die Mitte der eigenen Platte setzen
       const col = k % cols, row = Math.floor(k / cols);
-      const tx = col * PLATE_STRIDE + BED / 2 - part.width / 2;
-      const ty = -row * PLATE_STRIDE + BED / 2 - part.height / 2;
+      const tx = col * strideX + bedW / 2 - part.width / 2;
+      const ty = -row * strideY + bedH / 2 - part.height / 2;
       items.push(`<item objectid="${id}" transform="1 0 0 0 1 0 0 0 1 ${num(tx)} ${num(ty)} 0" printable="1"/>`);
 
       cfgObjects.push(`  <object id="${id}">\n    <metadata key="name" value="${esc(part.name)}"/>\n    <metadata key="extruder" value="1"/>\n  </object>`);
@@ -100,5 +112,5 @@
     return files;
   }
 
-  return { build, plateColumns };
+  return { build, plateColumns, bedSize };
 });

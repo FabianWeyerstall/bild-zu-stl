@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Bild zu STL</title>
   <meta name="description" content="Erzeugt aus einem Bild eine 3D-druckbare Schablone (STL) zum Nachmalen mit Kreidemarkern auf Glas und Wänden.">
-  <link rel="icon" href="favicon.svg?v=13" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=13">
-  <link rel="stylesheet" href="style.css?v=13">
+  <link rel="icon" href="favicon.svg?v=14" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=14">
+  <link rel="stylesheet" href="style.css?v=14">
 </head>
 <body>
   <header>
@@ -31,7 +31,7 @@
           <select id="printer">
             <option value="256x256" selected>Bambu Lab X1C, X1E, P1S, P1P, P2S (256 × 256 mm)</option>
             <option value="256x256:a1">Bambu Lab A1 (256 × 256 mm)</option>
-            <option value="180x180">Bambu Lab A1 mini (180 × 180 mm)</option>
+            <option value="180x180:a1mini">Bambu Lab A1 mini (180 × 180 mm)</option>
             <option value="340x320">Bambu Lab H2S (340 × 320 mm)</option>
             <option value="325x320">Bambu Lab H2D (325 × 320 mm, beide Düsen)</option>
           </select>
@@ -137,12 +137,13 @@
     <p>Tipp für Bambu Studio: Schichthöhe 0,2 mm, erste Schicht 0,2 mm. Die Kacheln stecken mit den Puzzle-Verbindern zusammen. <a href="https://github.com/FabianWeyerstall/bild-zu-stl">Quellcode</a></p>
   </footer>
 
-  <script src="vendor/earcut.min.js?v=13"></script>
-  <script src="vendor/jszip.min.js?v=13"></script>
-  <script src="stencil.js?v=13"></script>
-  <script src="vendor/bambu-project-settings.js?v=13"></script>
-  <script src="vendor/bambu-project-settings-a1.js?v=13"></script>
-  <script src="threemf.js?v=13"></script>
-  <script src="app.js?v=13"></script>
+  <script src="vendor/earcut.min.js?v=14"></script>
+  <script src="vendor/jszip.min.js?v=14"></script>
+  <script src="stencil.js?v=14"></script>
+  <script src="vendor/bambu-project-settings.js?v=14"></script>
+  <script src="vendor/bambu-project-settings-a1.js?v=14"></script>
+  <script src="vendor/bambu-project-settings-a1mini.js?v=14"></script>
+  <script src="threemf.js?v=14"></script>
+  <script src="app.js?v=14"></script>
 </body>
 </html>

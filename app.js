@@ -99,8 +99,10 @@
 
   // Druckbett des gewählten Bambu-Druckers (Breite × Tiefe in mm)
   const bed = () => $('printer').value.split(':')[0].split('x').map(Number);
-  // Bambu-Projektvorlage: eigene für den A1, sonst die des X1C
-  const projectSettings = () => ($('printer').value.endsWith(':a1') ? self.BAMBU_PROJECT_SETTINGS_A1 : self.BAMBU_PROJECT_SETTINGS);
+  // Bambu-Projektvorlage je Drucker, sonst die des X1C
+  const PROJECTS = { a1: self.BAMBU_PROJECT_SETTINGS_A1, a1mini: self.BAMBU_PROJECT_SETTINGS_A1MINI };
+  const ownProject = () => PROJECTS[$('printer').value.split(':')[1]];
+  const projectSettings = () => ownProject() || self.BAMBU_PROJECT_SETTINGS;
   const tileForBed = () => Math.min(...bed()) - 16;
   $('printer').addEventListener('change', () => { ui.maxTile.value = tileForBed(); saveSettings(); });
   function plateGeometry() {
@@ -186,6 +188,7 @@
       if (v === undefined) continue;
       if (el.type === 'checkbox' || el.type === 'radio') el.checked = !!v;
       else el.value = v;
+      if (el.tagName === 'SELECT' && el.selectedIndex < 0) el.selectedIndex = 0; // Eintrag gibt es nicht mehr
     }
     ui.thresholdOut.textContent = ui.threshold.value;
   }
@@ -463,7 +466,7 @@
         for (const [path, text] of Object.entries(files)) zip.file(path, text);
         const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 }, mimeType: 'model/3mf' });
         download(blob, `${imageName}.3mf`);
-        const other = bed()[0] !== 256 ? ' Die Datei ist für den X1C eingerichtet: In Bambu Studio oben links deinen Drucker wählen und kurz prüfen, ob jede Kachel auf ihrer Platte liegt.' : '';
+        const other = !ownProject() && bed()[0] !== 256 ? ' Die Datei ist für den X1C eingerichtet: In Bambu Studio oben links deinen Drucker wählen und kurz prüfen, ob jede Kachel auf ihrer Platte liegt.' : '';
         setStatus((single ? '3MF heruntergeladen.' : `3MF mit ${parts.length} Platten heruntergeladen. In Bambu Studio öffnen und „Alle Platten slicen“.`) + other);
       } else if (single) {
         download(new Blob([Stencil.trianglesToSTL(parts[0].tris, parts[0].name)], { type: 'model/stl' }), `${imageName}.stl`);
