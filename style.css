@@ -112,3 +112,20 @@ button:disabled { opacity: 0.5; cursor: default; }
 .edit .hint { flex: 1 1 320px; }
 button.secondary { width: auto; padding: 6px 12px; background: transparent; color: var(--accent); border: 1px solid var(--accent); }
 .empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; margin: 0; color: #5d6677; }
+.busy {
+  position: absolute; inset: 0; z-index: 2;
+  display: flex; justify-content: center; align-items: flex-start; padding-top: 80px;
+  background: rgba(255, 255, 255, 0.55); color: #1d2330; font-weight: 600;
+}
+.busyBox {
+  position: sticky; top: 35vh;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding: 18px 26px; border-radius: 12px; background: #fff; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+}
+.busy[hidden] { display: none; }
+.spin {
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 5px solid rgba(43, 108, 176, 0.25); border-top-color: #2b6cb0;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }

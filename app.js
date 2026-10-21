@@ -10,7 +10,7 @@
     minSteg: $('minSteg'), corner: $('corner'), bridge: $('bridge'), maxTile: $('maxTile'), clearance: $('clearance'),
     exportBtn: $('export'), status: $('status'), info: $('info'),
     overlay: $('overlay'), canvas: $('canvas'), empty: $('empty'),
-    tabs: $('tabs'), drag: $('drag'), resetEdits: $('resetEdits'),
+    tabs: $('tabs'), drag: $('drag'), resetEdits: $('resetEdits'), busy: $('busy'), busyText: $('busyText'),
   };
 
   const KNOB = { knobR: 3.5, neckW: 3.5, neckL: 2, knobSpacing: 40 };
@@ -105,7 +105,13 @@
 
   function setStatus(t) { ui.status.textContent = t; }
 
+  function setBusy(on, text) {
+    ui.busy.hidden = !on || !image;
+    if (text) ui.busyText.textContent = text;
+  }
+
   function schedule(delay = 450) {
+    setBusy(true, 'Bild wird angepasst …');
     clearTimeout(timer);
     timer = setTimeout(run, delay);
   }
@@ -156,6 +162,7 @@
     }
     running = false;
     if (pending) { pending = false; run(); }
+    else setBusy(false);
   }
 
   // --- Stege von Hand bearbeiten -----------------------------------------
@@ -186,8 +193,10 @@
 
   let dragStart = null;
   ui.canvas.addEventListener('pointerdown', (e) => {
-    if (!result || running) return;
-    ui.canvas.setPointerCapture(e.pointerId);
+    if (!result) return;
+    if (running) { setStatus('Moment, die Vorschau wird noch berechnet …'); return; }
+    e.preventDefault();
+    try { ui.canvas.setPointerCapture(e.pointerId); } catch (err) { /* ältere Browser */ }
     dragStart = { grid: eventToGrid(e), x: e.clientX, y: e.clientY };
   });
   ui.canvas.addEventListener('pointermove', (e) => {
@@ -214,7 +223,9 @@
     }
     // Klick: nächstgelegenen Steg suchen
     const [px, py] = end;
-    let best = null, bestD = s.bridgeMM / st.px / 2 + 2.5 / st.px;
+    // Trefferradius: mindestens 14 Bildschirmpixel, damit auch kleine Stege gut zu treffen sind
+    const screenPx = ui.canvas.width / ui.canvas.getBoundingClientRect().width;
+    let best = null, bestD = Math.max(s.bridgeMM / st.px / 2 + 2.5 / st.px, 14 * screenPx);
     for (const b of st.bridges) {
       const d = segDist(px, py, b.seg);
       if (d < bestD) { bestD = d; best = b; }
@@ -332,6 +343,7 @@
   ui.exportBtn.addEventListener('click', async () => {
     if (!result) return;
     ui.exportBtn.disabled = true;
+    setBusy(true, 'STL-Dateien werden erzeugt …');
     const { st, tiles, s } = result;
     try {
       const files = [];
@@ -359,6 +371,7 @@
       console.error(err);
       setStatus('Fehler beim Export: ' + err.message);
     }
+    setBusy(false);
     ui.exportBtn.disabled = false;
   });
 

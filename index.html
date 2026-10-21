@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Bild zu STL</title>
   <meta name="description" content="Erzeugt aus einem Bild eine 3D-druckbare Schablone (STL) zum Nachmalen mit Kreidemarkern auf Glas und Wänden.">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
   <header>
@@ -93,6 +93,7 @@
       </div>
       <div class="stage" id="stage">
         <div class="canvasWrap"><canvas id="canvas"></canvas><svg id="drag" aria-hidden="true"></svg></div>
+        <div class="busy" id="busy" hidden><div class="busyBox"><div class="spin"></div><span id="busyText">Bild wird angepasst …</span></div></div>
         <p class="empty" id="empty">Lade ein Bild, um die Vorschau zu sehen.</p>
       </div>
       <p class="hint" id="info"></p>
@@ -107,9 +108,9 @@
     <p>Tipp für Bambu Studio: Schichthöhe 0,2 mm, erste Schicht 0,2 mm. Die Kacheln stecken mit den Puzzle-Verbindern zusammen. <a href="https://github.com/FabianWeyerstall/bild-zu-stl">Quellcode</a></p>
   </footer>
 
-  <script src="vendor/earcut.min.js"></script>
-  <script src="vendor/jszip.min.js"></script>
-  <script src="stencil.js"></script>
-  <script src="app.js"></script>
+  <script src="vendor/earcut.min.js?v=5"></script>
+  <script src="vendor/jszip.min.js?v=5"></script>
+  <script src="stencil.js?v=5"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>
