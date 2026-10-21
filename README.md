@@ -23,7 +23,7 @@ Die App passt das Bild automatisch an:
 - **Einstellungen** werden im Browser gespeichert und beim nächsten Besuch wiederhergestellt („Einstellungen zurücksetzen“ unter „Erweitert“).
 - **Stege bearbeiten:** Klick auf einen Steg setzt ihn an die nächstbeste Stelle, Ziehen von Kante zu Kante setzt einen eigenen Steg.
 - **Klebelaschen** am Außenrand zum Festkleben mit Malerkrepp (optional, standardmäßig aus).
-- **Große Bilder** werden in Kacheln aufgeteilt, die auf die Druckplatte passen (der Drucker ist wählbar: X1C/X1E/P1S/P1P/P2S und A1 mit 256 × 256 mm, für X1C, A1 und A1 mini mit eigener Bambu-Projektvorlage, A1 mini mit 180 × 180 mm, H2S und H2D; die Kachel ist die kürzere Bettseite minus 16 mm). Die Schnitte werden dorthin gelegt, wo sie möglichst wenige Linien kreuzen. Die Kacheln haben Puzzle-Verbinder und kommen als ZIP mit einer STL pro Kachel, einer Übersicht und einer kurzen Anleitung.
+- **Große Bilder** werden in Kacheln aufgeteilt, die auf die Druckplatte passen (der Drucker ist wählbar: X1C/X1E/P1S/P1P/P2S und A1 mit 256 × 256 mm, für X1C, A1, A1 mini und H2D mit eigener Bambu-Projektvorlage; beim H2D zählt der Bereich, den beide Düsen erreichen, A1 mini mit 180 × 180 mm, H2S und H2D; die Kachel ist die kürzere Bettseite minus 16 mm). Die Schnitte werden dorthin gelegt, wo sie möglichst wenige Linien kreuzen. Die Kacheln haben Puzzle-Verbinder und kommen als ZIP mit einer STL pro Kachel, einer Übersicht und einer kurzen Anleitung.
 
 Farben in der Vorschau: blau = Schablone, weiß = Öffnung, orange = entfällt weil zu schmal, grün = verbreitert, rot = Haltesteg.
 

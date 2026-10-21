@@ -100,7 +100,7 @@
   // Druckbett des gewählten Bambu-Druckers (Breite × Tiefe in mm)
   const bed = () => $('printer').value.split(':')[0].split('x').map(Number);
   // Bambu-Projektvorlage je Drucker, sonst die des X1C
-  const PROJECTS = { a1: self.BAMBU_PROJECT_SETTINGS_A1, a1mini: self.BAMBU_PROJECT_SETTINGS_A1MINI };
+  const PROJECTS = { a1: self.BAMBU_PROJECT_SETTINGS_A1, a1mini: self.BAMBU_PROJECT_SETTINGS_A1MINI, h2d: self.BAMBU_PROJECT_SETTINGS_H2D };
   const ownProject = () => PROJECTS[$('printer').value.split(':')[1]];
   const projectSettings = () => ownProject() || self.BAMBU_PROJECT_SETTINGS;
   const tileForBed = () => Math.min(...bed()) - 16;
