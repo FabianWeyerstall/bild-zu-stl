@@ -71,6 +71,8 @@
     img.onload = () => {
       image = img;
       base = null;
+      analysis = null;
+      lossCache = new Map();
       edits = { removed: [], added: [] };
       ui.dropText.textContent = `${file.name} (${img.naturalWidth} × ${img.naturalHeight} px)`;
       ui.empty.style.display = 'none';
@@ -156,12 +158,103 @@
       b.innerHTML = `<b>${e.n}</b> ${e.n === 1 ? 'Platte' : 'Platten'}: ${e.w} mm`;
       b.title = `${e.n} ${e.n === 1 ? 'Platte' : 'Platten'} (${e.nx} × ${e.ny}), Breite bis ${e.w} mm`;
       if (e.n === p.n) b.classList.add('active');
+      b.dataset.w = e.w;
       b.addEventListener('click', () => { ui.width.value = e.w; syncHeight(); saveSettings(); schedule(0); });
       box.appendChild(b);
     }
+    scheduleDetail();
   }
 
-  ui.threshold.addEventListener('input', () => { ui.thresholdOut.textContent = ui.threshold.value; schedule(); });
+  // --- Malbarkeit: geht bei dieser Breite zu viel vom Bild verloren? ------
+  // Schnelle Abschätzung auf einem kleinen Raster des Bildes; das Ergebnis je Breite wird gemerkt.
+
+  const LOSS_BAD = 0.5, LOSS_WARN = 0.25;
+  const ANALYSIS_PX = 400;
+  let analysis = null; // { gray, w, h }
+  let lossCache = new Map(), lossKey = '';
+  let detailTimer = null, detailGen = 0;
+
+  function analysisImage() {
+    if (analysis || !image) return analysis;
+    const w = Math.min(ANALYSIS_PX, image.naturalWidth);
+    const h = Math.max(1, Math.round(w * aspect()));
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(image, 0, 0, w, h);
+    const d = ctx.getImageData(0, 0, w, h).data;
+    const gray = new Uint8Array(w * h);
+    for (let i = 0; i < w * h; i++) gray[i] = Math.round(0.299 * d[4 * i] + 0.587 * d[4 * i + 1] + 0.114 * d[4 * i + 2]);
+    analysis = { gray, w, h };
+    return analysis;
+  }
+
+  function lossAt(width) {
+    const a = analysisImage();
+    const s = readSettings();
+    const key = JSON.stringify([s.markerMM, s.minStegMM, s.widenThin, s.threshold, s.invert, s.smoothMM]);
+    if (key !== lossKey) { lossCache = new Map(); lossKey = key; }
+    const w = Math.round(width);
+    if (!lossCache.has(w)) lossCache.set(w, Stencil.paintLoss(a.gray, a.w, a.h, { ...s, px: w / a.w }));
+    return lossCache.get(w);
+  }
+
+  function scheduleDetail() {
+    clearTimeout(detailTimer);
+    detailGen++;
+    if (!image) return;
+    detailTimer = setTimeout(updateDetail, 250);
+  }
+
+  const pause = () => new Promise((r) => setTimeout(r, 0));
+
+  async function updateDetail() {
+    const gen = detailGen;
+    const s = readSettings();
+    const marker = `${fmt(s.markerMM)}-mm-Marker`;
+    const el = $('detailInfo');
+    const cur = num(ui.width, 400);
+    const show = (minW) => {
+      const l = lossAt(cur);
+      el.hidden = false;
+      el.classList.toggle('bad', l > LOSS_BAD);
+      el.classList.toggle('warn', l > LOSS_WARN && l <= LOSS_BAD);
+      if (l > LOSS_BAD) el.textContent = `Zu klein für den ${marker}: ${Math.round(l * 100)} % des Bildes werden verändert.` + (minW ? ` Malbar ab etwa ${minW} mm Breite.` : '');
+      else if (l > LOSS_WARN) el.textContent = `Grob: ${Math.round(l * 100)} % des Bildes werden durch Markerbreite und Stege verändert. Feiner wird es mit mehr Breite oder dünnerem Marker.`;
+      else el.textContent = `Gut malbar: ${Math.round(100 - l * 100)} % des Bildes bleiben erhalten.`;
+    };
+    // 1) aktuelle Breite bewerten
+    show(0);
+    await pause();
+    if (gen !== detailGen) return;
+    // 2) Plattenstufen prüfen und zu kleine sperren
+    for (const b of document.querySelectorAll('#fitButtons button')) {
+      const l = lossAt(+b.dataset.w);
+      b.classList.toggle('bad', l > LOSS_BAD);
+      b.classList.toggle('warn', l > LOSS_WARN && l <= LOSS_BAD);
+      b.disabled = l > LOSS_BAD;
+      if (l > LOSS_BAD) b.title = `Zu klein für den ${marker}: ${Math.round(l * 100)} % des Bildes würden verändert.`;
+      else if (l > LOSS_WARN) b.title += ` · grob: ${Math.round(l * 100)} % des Bildes werden verändert`;
+      await pause();
+      if (gen !== detailGen) return;
+    }
+    // 3) kleinste noch malbare Breite suchen (Verlust höchstens 50 %), auf etwa 3 % genau
+    let lo = 30, hi = 3000;
+    if (lossAt(hi) > LOSS_BAD) lo = hi;
+    while (hi / lo > 1.03) {
+      const mid = Math.round(Math.sqrt(lo * hi));
+      if (lossAt(mid) > LOSS_BAD) lo = mid; else hi = mid;
+      await pause();
+      if (gen !== detailGen) return;
+    }
+    $('widthRange').min = Math.min(hi, cur);
+    show(hi);
+  }
+
+  ui.threshold.addEventListener('input', () => { ui.thresholdOut.textContent = ui.threshold.value; scheduleDetail(); schedule(); });
   document.querySelectorAll('#settings input, #settings select').forEach((el) => {
     if (el === ui.width || el === ui.height || el === ui.threshold || el === ui.file || el.id === 'format' || el.id === 'widthRange' || el.id === 'vector') return;
     el.addEventListener('change', () => { syncPlates(); schedule(); });

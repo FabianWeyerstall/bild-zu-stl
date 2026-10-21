@@ -138,3 +138,8 @@ button.secondary { width: auto; padding: 6px 12px; background: transparent; colo
 }
 .fitButtons button.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
 .fitButtons button b { font-weight: 700; }
+.fitButtons button.warn { border-color: var(--lost); }
+.fitButtons button.bad { text-decoration: line-through; }
+.detail { margin: 2px 0 6px; font-size: 0.85rem; color: var(--muted); }
+.detail.warn { color: var(--lost); font-weight: 600; }
+.detail.bad { color: var(--bridge); font-weight: 600; }

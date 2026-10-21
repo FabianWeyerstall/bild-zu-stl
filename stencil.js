@@ -371,6 +371,19 @@
     return { W, H, px: p, border: b, tab: tm, mat, holes0, area };
   }
 
+  // Wie gut bleibt das Bild bei dieser Größe erhalten? Anteil der Malfläche, der sich durch
+  // Markerbreite und Mindeststeg verändert (0 = unverändert, 1 = Bild verloren).
+  function paintLoss(gray, iw, ih, opts) {
+    const st = prepareStencil(gray, iw, ih, { ...opts, borderMM: 0, tabMM: 0 });
+    let orig = 0, diff = 0;
+    for (let i = 0; i < st.W * st.H; i++) {
+      const want = st.holes0[i], got = !st.mat[i];
+      if (want) orig++;
+      if (want !== (got ? 1 : 0)) diff++;
+    }
+    return orig ? Math.min(1, diff / orig) : 0;
+  }
+
   // Günstiger Teil: Haltestege (inkl. Änderungen von Hand), Ecken abrunden.
   function finishStencil(base, opts, edits) {
     const { W, H, px: p, area } = base;
@@ -1044,6 +1057,7 @@
   return {
     buildStencil, prepareStencil, finishStencil, planTiles, makeTiles, maskToTriangles, trianglesToSTL,
     // für Tests
+    paintLoss,
     _internal: { opening, erode, dilate, label, fixDiagonals, traceLoops, simplifyClosed, signedArea, addBridges },
   };
 });
