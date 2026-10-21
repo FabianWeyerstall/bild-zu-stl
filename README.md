@@ -20,6 +20,7 @@ Die App passt das Bild automatisch an:
 - **Inseln** (z. B. das Innere eines „O“) bekommen automatisch einen kurzen, geraden Haltesteg zur nächstgelegenen Kante, genau einen pro Insel.
 - **Ecken** werden abgerundet (Standard 1 mm), damit der Marker nirgends hängen bleibt, z. B. dort, wo ein Steg auf eine Linie trifft.
 - **Kanten glätten** (Standard an): Die Konturen werden im Netz als glatte Kurven statt als Pixelstufen ausgegeben. Falls eine Kontur dabei nicht sauber schließt, nimmt die App für dieses Teil automatisch die Pixelkontur.
+- **Leerer Rand** ums Motiv wird beim Laden automatisch abgeschnitten (abschaltbar), damit die Druckfläche fürs eigentliche Bild genutzt wird.
 - **Malbarkeit:** Die App schätzt, wie viel vom Bild bei der gewählten Breite durch Markerbreite und Mindeststeg verändert wird. Plattenstufen, bei denen mehr als die Hälfte verloren ginge, sind gesperrt, und die App nennt die kleinste noch malbare Breite.
 - **Einstellungen** werden im Browser gespeichert und beim nächsten Besuch wiederhergestellt („Einstellungen zurücksetzen“ unter „Erweitert“).
 - **Stege bearbeiten:** Klick auf einen Steg setzt ihn an die nächstbeste Stelle, Ziehen von Kante zu Kante setzt einen eigenen Steg.

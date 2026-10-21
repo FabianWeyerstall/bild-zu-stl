@@ -16,7 +16,8 @@
   const KNOB = { knobR: 3.5, neckW: 3.5, neckL: 2, knobSpacing: 40 };
   const MAX_GRID = 3500;
 
-  let image = null;
+  let image = null;     // Bild, mit dem gerechnet wird (ggf. zugeschnitten)
+  let original = null, originalName = '';
   let imageName = 'schablone';
   let result = null; // { st, tiles, settings }
   let timer = null;
@@ -69,19 +70,71 @@
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
-      image = img;
-      base = null;
-      analysis = null;
-      lossCache = new Map();
-      edits = { removed: [], added: [] };
-      ui.dropText.textContent = `${file.name} (${img.naturalWidth} × ${img.naturalHeight} px)`;
+      original = img;
+      originalName = file.name;
       ui.empty.style.display = 'none';
-      syncHeight();
-      schedule(0);
+      useImage();
     };
     img.onerror = () => setStatus('Das Bild konnte nicht gelesen werden.');
     img.src = url;
   }
+
+  // Bild übernehmen, auf Wunsch ohne leeren Rand
+  function useImage() {
+    if (!original) return;
+    const W = original.naturalWidth, H = original.naturalHeight;
+    const box = $('crop').checked ? contentBox(original) : null;
+    if (box) {
+      const c = document.createElement('canvas');
+      c.width = box.w; c.height = box.h;
+      c.getContext('2d').drawImage(original, box.x, box.y, box.w, box.h, 0, 0, box.w, box.h);
+      c.naturalWidth = box.w; c.naturalHeight = box.h;
+      image = c;
+      ui.dropText.textContent = `${originalName} (${W} × ${H} px, Rand abgeschnitten: ${box.w} × ${box.h} px)`;
+    } else {
+      image = original;
+      ui.dropText.textContent = `${originalName} (${W} × ${H} px)`;
+    }
+    base = null;
+    analysis = null;
+    lossCache = new Map();
+    edits = { removed: [], added: [] };
+    syncHeight();
+    schedule(0);
+  }
+
+  // Bereich mit Motiv finden: alles, was sich deutlich von der Farbe der Bildecken abhebt.
+  // Lässt etwas Luft (2 % der Motivgröße) und schneidet nur, wenn es sich lohnt.
+  function contentBox(img) {
+    const W = img.naturalWidth, H = img.naturalHeight;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, W, H);
+    ctx.drawImage(img, 0, 0);
+    const d = ctx.getImageData(0, 0, W, H).data;
+    const gray = (i) => 0.299 * d[4 * i] + 0.587 * d[4 * i + 1] + 0.114 * d[4 * i + 2];
+    const bg = (gray(0) + gray(W - 1) + gray((H - 1) * W) + gray(H * W - 1)) / 4;
+    let x0 = W, y0 = H, x1 = -1, y1 = -1;
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        if (Math.abs(gray(y * W + x) - bg) < 48) continue;
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+        if (y < y0) y0 = y;
+        if (y > y1) y1 = y;
+      }
+    }
+    if (x1 < 0) return null;
+    const pad = Math.max(2, Math.round(0.02 * Math.max(x1 - x0, y1 - y0)));
+    x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad);
+    x1 = Math.min(W - 1, x1 + pad); y1 = Math.min(H - 1, y1 + pad);
+    const w = x1 - x0 + 1, h = y1 - y0 + 1;
+    if (w * h > 0.97 * W * H) return null;
+    return { x: x0, y: y0, w, h };
+  }
+  $('crop').addEventListener('change', useImage);
 
   ui.file.addEventListener('change', () => loadFile(ui.file.files[0]));
   ['dragenter', 'dragover'].forEach((ev) => ui.drop.addEventListener(ev, (e) => { e.preventDefault(); ui.drop.classList.add('over'); }));
@@ -256,7 +309,7 @@
 
   ui.threshold.addEventListener('input', () => { ui.thresholdOut.textContent = ui.threshold.value; scheduleDetail(); schedule(); });
   document.querySelectorAll('#settings input, #settings select').forEach((el) => {
-    if (el === ui.width || el === ui.height || el === ui.threshold || el === ui.file || el.id === 'format' || el.id === 'widthRange' || el.id === 'vector') return;
+    if (el === ui.width || el === ui.height || el === ui.threshold || el === ui.file || el.id === 'format' || el.id === 'widthRange' || el.id === 'vector' || el.id === 'crop') return;
     el.addEventListener('change', () => { syncPlates(); schedule(); });
   });
   ui.overlay.addEventListener('change', () => result && render());
