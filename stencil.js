@@ -19,7 +19,7 @@
   // Euklidische Distanztransformation (Felzenszwalb & Huttenlocher)
   // ---------------------------------------------------------------------------
 
-  function dt1d(f, n, d, v, z) {
+  function dt1d(f, n, d, v, z, arg) {
     let k = 0;
     v[0] = 0;
     z[0] = -INF;
@@ -40,6 +40,7 @@
       while (z[k + 1] < q) k++;
       const dq = q - v[k];
       d[q] = dq * dq + f[v[k]];
+      if (arg) arg[q] = v[k];
     }
   }
 
@@ -153,84 +154,97 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Haltestege: jede Insel wird über den kürzesten Weg mit dem Hauptteil verbunden
+  // Haltestege: gerade, kurze Verbindungen (minimaler Spannbaum der Teile)
   // ---------------------------------------------------------------------------
 
+  // Abstand (quadriert) und Index des nächsten Materialpixels für jedes Pixel.
+  function featureTransform(mat, W, H) {
+    const n = Math.max(W, H);
+    const f = new Float64Array(n), d = new Float64Array(n), z = new Float64Array(n + 1);
+    const v = new Int32Array(n), arg = new Int32Array(n);
+    const D = new Float32Array(W * H), NY = new Int32Array(W * H), F = new Int32Array(W * H);
+    for (let x = 0; x < W; x++) {
+      for (let y = 0; y < H; y++) f[y] = mat[y * W + x] ? 0 : INF;
+      dt1d(f, H, d, v, z, arg);
+      for (let y = 0; y < H; y++) { D[y * W + x] = d[y]; NY[y * W + x] = arg[y]; }
+    }
+    for (let y = 0; y < H; y++) {
+      const o = y * W;
+      for (let x = 0; x < W; x++) f[x] = D[o + x];
+      dt1d(f, W, d, v, z, arg);
+      for (let x = 0; x < W; x++) { D[o + x] = d[x]; F[o + x] = NY[o + arg[x]] * W + arg[x]; }
+    }
+    return { D, F };
+  }
+
+  /*
+   * Verbindet alle Materialteile mit möglichst kurzen, geraden Stegen.
+   * Kandidaten sind die engsten Stellen zwischen benachbarten Teilen (Voronoi-Grenzen),
+   * daraus wird wie bei Kruskal der kürzeste Spannbaum gewählt: genau so viele Stege
+   * wie nötig, und eine Insel in einer Insel wird an die nächstgelegene angebunden.
+   * allowed (optional): nur dort dürfen Stege entstehen.
+   */
   function addBridges(mat, W, H, radius, allowed) {
     const bridgeMask = new Uint8Array(W * H);
+    const { lab, n } = label(mat, W, H);
+    if (n <= 1) return { bridgeMask, bridged: 0 };
+    const { D, F } = featureTransform(mat, W, H);
+
+    const best = new Map();
+    const consider = (i, j) => {
+      if (allowed && (!allowed[i] || !allowed[j])) return;
+      const fi = F[i], fj = F[j];
+      const A = lab[fi], B = lab[fj];
+      if (A === B) return;
+      const cost = Math.sqrt(D[i]) + Math.sqrt(D[j]);
+      const key = A < B ? A * (n + 1) + B : B * (n + 1) + A;
+      const cur = best.get(key);
+      if (!cur || cost < cur[0]) best.set(key, [cost, fi, fj, A, B]);
+    };
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const i = y * W + x;
+        if (x < W - 1) consider(i, i + 1);
+        if (y < H - 1) consider(i, i + W);
+      }
+    }
+    const edges = [...best.values()].sort((a, b) => a[0] - b[0]);
+
+    const parent = new Int32Array(n + 1);
+    for (let k = 0; k <= n; k++) parent[k] = k;
+    const find = (k) => { while (parent[k] !== k) { parent[k] = parent[parent[k]]; k = parent[k]; } return k; };
+    const union = (a, b) => { a = find(a); b = find(b); if (a !== b) parent[a] = b; };
+
     const disk = diskOffsets(Math.max(1, radius), W);
-    const parent = new Int32Array(W * H);
-    const queue = new Int32Array(W * H);
     let bridged = 0;
-
-    for (let iter = 0; iter < 40; iter++) {
-      const { lab, n, sizes } = label(mat, W, H);
-      if (n <= 1) break;
-      let main = 1;
-      for (let k = 2; k <= n; k++) if (sizes[k] > sizes[main]) main = k;
-      const connected = new Uint8Array(n + 1);
-      connected[main] = 1;
-
-      parent.fill(-2);
-      let qh = 0, qt = 0;
-      for (let p = 0; p < W * H; p++) {
-        if (mat[p] || (allowed && !allowed[p])) continue;
-        const x = p % W, y = (p - x) / W;
-        let touch = false;
-        for (let dy = -1; dy <= 1 && !touch; dy++) {
-          const yy = y + dy;
-          if (yy < 0 || yy >= H) continue;
-          for (let dx = -1; dx <= 1; dx++) {
-            const xx = x + dx;
-            if (xx < 0 || xx >= W) continue;
-            const q = yy * W + xx;
-            if (mat[q] && lab[q] === main) { touch = true; break; }
-          }
-        }
-        if (touch) { parent[p] = -1; queue[qt++] = p; }
+    for (const [, fi, fj, A, B] of edges) {
+      if (find(A) === find(B)) continue;
+      const ax = fi % W, ay = (fi - ax) / W, bx = fj % W, by = (fj - bx) / W;
+      const len = Math.hypot(bx - ax, by - ay);
+      const steps = Math.max(1, Math.ceil(len * 2));
+      const line = [];
+      const crossed = new Set();
+      let ok = true;
+      for (let s = 0; s <= steps; s++) {
+        const x = Math.round(ax + ((bx - ax) * s) / steps), y = Math.round(ay + ((by - ay) * s) / steps);
+        const q = y * W + x;
+        if (mat[q]) crossed.add(lab[q]);
+        else if (allowed && !allowed[q]) { ok = false; break; }
+        line.push(q);
       }
-
-      const paths = [];
-      while (qh < qt) {
-        const p = queue[qh++];
-        const x = p % W, y = (p - x) / W;
-        for (let dy = -1; dy <= 1; dy++) {
-          const yy = y + dy;
-          if (yy < 0 || yy >= H) continue;
-          for (let dx = -1; dx <= 1; dx++) {
-            if (!dx && !dy) continue;
-            const xx = x + dx;
-            if (xx < 0 || xx >= W) continue;
-            const q = yy * W + xx;
-            if (mat[q]) {
-              const L = lab[q];
-              if (!connected[L]) {
-                connected[L] = 1;
-                const path = [q];
-                let t = p;
-                while (t >= 0) { path.push(t); t = parent[t]; }
-                paths.push(path);
-              }
-            } else if (parent[q] === -2 && (!allowed || allowed[q])) {
-              parent[q] = p;
-              queue[qt++] = q;
-            }
-          }
+      if (!ok) continue;
+      for (const q0 of line) {
+        const x = q0 % W, y = (q0 - x) / W;
+        for (const [dx, dy] of disk) {
+          const xx = x + dx, yy = y + dy;
+          if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
+          const q = yy * W + xx;
+          if (!mat[q] && (!allowed || allowed[q])) { mat[q] = 1; bridgeMask[q] = 1; }
         }
       }
-      if (!paths.length) break;
-      for (const path of paths) {
-        for (const p of path) {
-          const x = p % W, y = (p - x) / W;
-          for (const [dx, dy] of disk) {
-            const xx = x + dx, yy = y + dy;
-            if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
-            const q = yy * W + xx;
-            if (!mat[q] && (!allowed || allowed[q])) { mat[q] = 1; bridgeMask[q] = 1; }
-          }
-        }
-      }
-      bridged += paths.length;
+      for (const L of crossed) union(A, L);
+      union(A, B);
+      bridged++;
     }
     return { bridgeMask, bridged };
   }
@@ -330,14 +344,45 @@
    * opts: { maxTileMM, clearanceMM, knobR, neckW, neckL, knobSpacing }  (alles in mm)
    */
   function planTiles(st, opts) {
-    const { W, H, px: p } = st;
+    const { W, H, px: p, mat } = st;
     const knobLen = opts.neckL + 2 * opts.knobR;
     const count = (sizeMM) => sizeMM <= opts.maxTileMM ? 1 : Math.ceil(sizeMM / (opts.maxTileMM - knobLen));
     const nx = count(W * p), ny = count(H * p);
-    const cutX = [], cutY = [];
-    for (let k = 0; k <= nx; k++) cutX.push(Math.round((k * W) / nx));
-    for (let k = 0; k <= ny; k++) cutY.push(Math.round((k * H) / ny));
-    return { nx, ny, cutX, cutY };
+    const maxPx = Math.floor((nx * ny > 1 ? opts.maxTileMM - knobLen : opts.maxTileMM) / p);
+
+    // Schnittlinien dorthin legen, wo sie möglichst wenige Linien kreuzen.
+    // Kosten einer Spalte/Zeile = Anzahl der Wechsel Material <-> Öffnung.
+    function cuts(n, len, vertical) {
+      const cost = new Float64Array(len);
+      const other = vertical ? H : W;
+      for (let a = 0; a < len; a++) {
+        let c = 0, prev = 1;
+        for (let b = 0; b < other; b++) {
+          const m = vertical ? mat[b * W + a] : mat[a * W + b];
+          if (m !== prev) c++;
+          prev = m;
+        }
+        cost[a] = c;
+      }
+      const out = [0];
+      const ideal = len / n;
+      const window = Math.round(ideal * 0.2);
+      for (let k = 1; k < n; k++) {
+        const target = Math.round((k * len) / n);
+        const prev = out[k - 1];
+        const lo = Math.max(target - window, prev + 1, len - (n - k) * maxPx);
+        const hi = Math.min(target + window, prev + maxPx, len - 1);
+        let bestA = Math.min(Math.max(target, lo), hi), bestC = Infinity;
+        for (let a = lo; a <= hi; a++) {
+          const c = cost[a] + Math.abs(a - target) / (window + 1) * 0.5;
+          if (c < bestC) { bestC = c; bestA = a; }
+        }
+        out.push(bestA);
+      }
+      out.push(len);
+      return out;
+    }
+    return { nx, ny, cutX: cuts(nx, W, true), cutY: cuts(ny, H, false) };
   }
 
   function makeTiles(st, opts) {
