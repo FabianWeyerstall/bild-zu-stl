@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bild zu STL</title>
+  <meta name="description" content="Erzeugt aus einem Bild eine 3D-druckbare Schablone (STL) zum Nachmalen mit Kreidemarkern auf Glas und Wänden.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Bild zu STL</h1>
+    <p>Schablonen zum Nachmalen mit Kreidemarker, für Fenster und Wände. Alles läuft in deinem Browser, nichts wird hochgeladen.</p>
+  </header>
+
+  <main>
+    <aside id="settings">
+      <section>
+        <h2>1. Bild</h2>
+        <label class="drop" id="drop">
+          <input type="file" id="file" accept="image/*">
+          <span id="dropText">Bild hierher ziehen oder klicken</span>
+        </label>
+      </section>
+
+      <section>
+        <h2>2. Größe</h2>
+        <div class="row">
+          <label>Breite (mm)<input type="number" id="width" value="400" min="20" max="5000" step="1"></label>
+          <label>Höhe (mm)<input type="number" id="height" value="300" min="20" max="5000" step="1"></label>
+        </div>
+        <label>Rand um das Bild (mm)<input type="number" id="border" value="10" min="0" max="100" step="1"></label>
+        <p class="hint" id="sizeInfo"></p>
+      </section>
+
+      <section>
+        <h2>3. Schablone</h2>
+        <fieldset>
+          <legend>Dicke</legend>
+          <label class="pill"><input type="radio" name="thick" value="0.4" checked>0,4 mm</label>
+          <label class="pill"><input type="radio" name="thick" value="0.6">0,6 mm</label>
+        </fieldset>
+        <fieldset>
+          <legend>Markerbreite (kleinste Öffnung)</legend>
+          <label class="pill"><input type="radio" name="marker" value="1">1 mm</label>
+          <label class="pill"><input type="radio" name="marker" value="3" checked>3 mm</label>
+          <label class="pill"><input type="radio" name="marker" value="6">6 mm</label>
+        </fieldset>
+        <label>Dünne Linien
+          <select id="thin">
+            <option value="widen" selected>auf Markerbreite verbreitern</option>
+            <option value="remove">weglassen</option>
+          </select>
+        </label>
+      </section>
+
+      <section>
+        <h2>4. Bild umwandeln</h2>
+        <label>Helligkeits-Schwelle <output id="thresholdOut">128</output>
+          <input type="range" id="threshold" min="1" max="254" value="128">
+        </label>
+        <label class="check"><input type="checkbox" id="invert">Helle Bereiche ausmalen statt dunkle</label>
+        <label>Glätten (mm)<input type="number" id="smooth" value="0.3" min="0" max="5" step="0.1"></label>
+      </section>
+
+      <details>
+        <summary>Erweitert</summary>
+        <label>Mindest-Stegbreite (mm)<input type="number" id="minSteg" value="2" min="0.8" max="10" step="0.1"></label>
+        <label>Breite der Haltestege (mm)<input type="number" id="bridge" value="2" min="0.8" max="10" step="0.1"></label>
+        <label>Max. Kachelgröße (mm)<input type="number" id="maxTile" value="240" min="60" max="256" step="1"></label>
+        <label>Spiel der Puzzle-Verbinder (mm)<input type="number" id="clearance" value="0.2" min="0.05" max="1" step="0.05"></label>
+        <p class="hint">Bambu Lab X1C: Druckplatte 256 × 256 mm. 240 mm lässt etwas Rand.</p>
+      </details>
+
+      <section class="actions">
+        <button id="export" disabled>STL exportieren</button>
+        <p class="hint" id="status">Noch kein Bild geladen.</p>
+      </section>
+    </aside>
+
+    <section id="preview">
+      <div class="toolbar">
+        <label class="check"><input type="checkbox" id="overlay">Original überlagern</label>
+        <ul class="legend">
+          <li><i class="sw mat"></i>Schablone</li>
+          <li><i class="sw hole"></i>Öffnung (malen)</li>
+          <li><i class="sw lost"></i>entfällt (zu schmal)</li>
+          <li><i class="sw added"></i>verbreitert</li>
+          <li><i class="sw bridge"></i>Haltesteg</li>
+        </ul>
+      </div>
+      <div class="stage" id="stage">
+        <canvas id="canvas"></canvas>
+        <p class="empty" id="empty">Lade ein Bild, um die Vorschau zu sehen.</p>
+      </div>
+      <p class="hint" id="info"></p>
+    </section>
+  </main>
+
+  <footer>
+    <p>Tipp für Bambu Studio: Schichthöhe 0,2 mm, erste Schicht 0,2 mm. Die Kacheln stecken mit den Puzzle-Verbindern zusammen. <a href="https://github.com/FabianWeyerstall/bild-zu-stl">Quellcode</a></p>
+  </footer>
+
+  <script src="vendor/earcut.min.js"></script>
+  <script src="vendor/jszip.min.js"></script>
+  <script src="stencil.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

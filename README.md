@@ -1,2 +1,37 @@
-# bild-zu-stl
-Bilder zu STL für Glastattoos
+# Bild zu STL
+
+Web-App, die aus einem Bild eine 3D-druckbare **Schablone** macht. Die Schablone wird auf Fenster oder Wand gelegt und mit einem Kreidemarker (1, 3 oder 6 mm) nachgemalt.
+
+**App öffnen:** https://fabianweyerstall.github.io/bild-zu-stl/
+
+Alles läuft im Browser, das Bild wird nirgendwo hochgeladen.
+
+## So funktioniert's
+
+1. Bild hochladen (PNG, JPG, …). Dunkle Bereiche werden zu Öffnungen, durch die gemalt wird (umkehrbar).
+2. Breite in mm einstellen, die Höhe folgt dem Seitenverhältnis. Optional einen Rand um das Bild.
+3. Dicke (0,4 oder 0,6 mm) und Markerbreite wählen.
+4. Vorschau prüfen, dann **STL exportieren**.
+
+Die App passt das Bild automatisch an:
+
+- **Öffnungen** schmaler als der Marker werden weggelassen oder auf Markerbreite verbreitert (einstellbar).
+- **Stege** zwischen Öffnungen werden nicht schmaler als die Mindest-Stegbreite (Standard 2 mm).
+- **Inseln** (z. B. das Innere eines „O“) bekommen automatisch einen Haltesteg zum Rest der Schablone.
+- **Große Bilder** werden in Kacheln aufgeteilt, die auf die Druckplatte passen (Standard max. 240 mm, Bambu Lab X1C hat 256 × 256 mm). Die Kacheln haben Puzzle-Verbinder und kommen als ZIP mit einer STL pro Kachel, einer Übersicht und einer kurzen Anleitung.
+
+Farben in der Vorschau: blau = Schablone, weiß = Öffnung, orange = entfällt weil zu schmal, grün = verbreitert, rot = Haltesteg.
+
+## Drucken
+
+In Bambu Studio die STL(s) öffnen, Schichthöhe 0,2 mm, keine Stützen. Kacheln sind mit R (Reihe, von oben) und S (Spalte, von links) benannt.
+
+## Entwicklung
+
+Reines HTML/JavaScript ohne Build-Schritt. Die Kernlogik liegt in `stencil.js`, die Oberfläche in `app.js`.
+
+```
+node test/test.js   # prüft u. a., dass alle erzeugten Netze geschlossen sind
+```
+
+Verwendete Bibliotheken (im Ordner `vendor/`): [earcut](https://github.com/mapbox/earcut) (ISC) und [JSZip](https://github.com/Stuk/jszip) (MIT).
