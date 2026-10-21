@@ -143,3 +143,16 @@ button.secondary { width: auto; padding: 6px 12px; background: transparent; colo
 .detail { margin: 2px 0 6px; font-size: 0.85rem; color: var(--muted); }
 .detail.warn { color: var(--lost); font-weight: 600; }
 .detail.bad { color: var(--bridge); font-weight: 600; }
+
+/* Abschnitte links einklappbar */
+aside section > h2.fold { cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+aside section > h2.fold::after { content: '▾'; color: var(--muted); font-size: 0.9rem; transition: transform .15s; }
+aside section.collapsed > h2.fold::after { transform: rotate(-90deg); }
+aside section.collapsed > h2.fold { margin-bottom: 0; }
+aside section.collapsed > :not(h2) { display: none !important; }
+
+/* Vorschau bleibt beim Scrollen der Einstellungen sichtbar */
+@media (min-width: 861px) {
+  #preview { position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow: auto; }
+  .stage canvas { max-height: calc(100vh - 190px); width: auto; }
+}

@@ -96,7 +96,7 @@
       ui.dropText.textContent = `${originalName} (${W} × ${H} px)`;
     }
     base = null;
-    analysis = null;
+    analysis = new Map();
     lossCache = new Map();
     edits = { removed: [], added: [] };
     syncHeight();
@@ -224,14 +224,19 @@
   // Schnelle Abschätzung auf einem kleinen Raster des Bildes; das Ergebnis je Breite wird gemerkt.
 
   const LOSS_BAD = 0.5, LOSS_WARN = 0.25;
-  const ANALYSIS_PX = 400;
-  let analysis = null; // { gray, w, h }
+  // Das Analyseraster wächst mit der Breite mit, damit Marker und Stege darauf mindestens
+  // etwa 4 Pixel breit sind (sonst wirkt eine große Schablone fälschlich verlustfrei).
+  const ANALYSIS_STEPS = [400, 600, 800, 1000];
+  let analysis = new Map(); // Rasterbreite -> { gray, w, h }
   let lossCache = new Map(), lossKey = '';
   let detailTimer = null, detailGen = 0;
 
-  function analysisImage() {
-    if (analysis || !image) return analysis;
-    const w = Math.min(ANALYSIS_PX, image.naturalWidth);
+  function analysisImage(width, s) {
+    if (!image) return null;
+    const need = width / (Math.min(s.markerMM, s.minStegMM || s.markerMM) / 4);
+    const step = ANALYSIS_STEPS.find((n) => n >= need) || ANALYSIS_STEPS[ANALYSIS_STEPS.length - 1];
+    const w = Math.min(step, image.naturalWidth);
+    if (analysis.has(w)) return analysis.get(w);
     const h = Math.max(1, Math.round(w * aspect()));
     const c = document.createElement('canvas');
     c.width = w; c.height = h;
@@ -243,17 +248,20 @@
     const d = ctx.getImageData(0, 0, w, h).data;
     const gray = new Uint8Array(w * h);
     for (let i = 0; i < w * h; i++) gray[i] = Math.round(0.299 * d[4 * i] + 0.587 * d[4 * i + 1] + 0.114 * d[4 * i + 2]);
-    analysis = { gray, w, h };
-    return analysis;
+    const a = { gray, w, h };
+    analysis.set(w, a);
+    return a;
   }
 
   function lossAt(width) {
-    const a = analysisImage();
     const s = readSettings();
     const key = JSON.stringify([s.markerMM, s.minStegMM, s.widenThin, s.threshold, s.invert, s.smoothMM]);
     if (key !== lossKey) { lossCache = new Map(); lossKey = key; }
     const w = Math.round(width);
-    if (!lossCache.has(w)) lossCache.set(w, Stencil.paintLoss(a.gray, a.w, a.h, { ...s, px: w / a.w }));
+    if (!lossCache.has(w)) {
+      const a = analysisImage(w, s);
+      lossCache.set(w, Stencil.paintLoss(a.gray, a.w, a.h, { ...s, px: w / a.w }));
+    }
     return lossCache.get(w);
   }
 
@@ -341,6 +349,29 @@
     ui.thresholdOut.textContent = ui.threshold.value;
   }
   restoreSettings();
+
+  // --- Abschnitte einklappen (Zustand wird gemerkt) ------------------------
+
+  const FOLD_STORE = 'bild-zu-stl:eingeklappt';
+  let folded = [];
+  try { folded = JSON.parse(localStorage.getItem(FOLD_STORE) || '[]'); } catch (e) { folded = []; }
+  document.querySelectorAll('#settings > section:not(.actions) > h2').forEach((h) => {
+    const sec = h.parentElement;
+    const id = h.textContent.trim();
+    h.classList.add('fold');
+    h.tabIndex = 0;
+    h.setAttribute('role', 'button');
+    const set = (c) => { sec.classList.toggle('collapsed', c); h.setAttribute('aria-expanded', String(!c)); };
+    set(folded.includes(id));
+    const toggle = () => {
+      set(!sec.classList.contains('collapsed'));
+      folded = folded.filter((x) => x !== id);
+      if (sec.classList.contains('collapsed')) folded.push(id);
+      try { localStorage.setItem(FOLD_STORE, JSON.stringify(folded)); } catch (e) { /* egal */ }
+    };
+    h.addEventListener('click', toggle);
+    h.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+  });
   if (num(ui.maxTile, 240) > tileLimit()) ui.maxTile.value = tileLimit();
   syncHeight();
   storable().forEach((el) => { el.addEventListener('change', saveSettings); el.addEventListener('input', saveSettings); });
