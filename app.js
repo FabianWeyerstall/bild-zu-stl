@@ -98,7 +98,9 @@
   // --- Plattenaufteilung: wie viele Druckplatten ergibt welche Breite? ----
 
   // Druckbett des gewählten Bambu-Druckers (Breite × Tiefe in mm)
-  const bed = () => $('printer').value.split('x').map(Number);
+  const bed = () => $('printer').value.split(':')[0].split('x').map(Number);
+  // Bambu-Projektvorlage: eigene für den A1, sonst die des X1C
+  const projectSettings = () => ($('printer').value.endsWith(':a1') ? self.BAMBU_PROJECT_SETTINGS_A1 : self.BAMBU_PROJECT_SETTINGS);
   const tileForBed = () => Math.min(...bed()) - 16;
   $('printer').addEventListener('change', () => { ui.maxTile.value = tileForBed(); saveSettings(); });
   function plateGeometry() {
@@ -457,7 +459,7 @@
       if (as3mf) {
         setStatus('Packe 3MF …');
         const zip = new JSZip();
-        const files = ThreeMF.build(parts, imageName, self.BAMBU_PROJECT_SETTINGS);
+        const files = ThreeMF.build(parts, imageName, projectSettings());
         for (const [path, text] of Object.entries(files)) zip.file(path, text);
         const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 }, mimeType: 'model/3mf' });
         download(blob, `${imageName}.3mf`);
