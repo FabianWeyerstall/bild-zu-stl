@@ -96,7 +96,7 @@
 
   ui.threshold.addEventListener('input', () => { ui.thresholdOut.textContent = ui.threshold.value; schedule(); });
   document.querySelectorAll('#settings input, #settings select').forEach((el) => {
-    if (el === ui.width || el === ui.height || el === ui.threshold || el === ui.file) return;
+    if (el === ui.width || el === ui.height || el === ui.threshold || el === ui.file || el.id === 'format') return;
     el.addEventListener('change', () => schedule());
   });
   ui.overlay.addEventListener('change', () => result && render());
@@ -345,30 +345,40 @@
   ui.exportBtn.addEventListener('click', async () => {
     if (!result) return;
     ui.exportBtn.disabled = true;
-    setBusy(true, 'STL-Dateien werden erzeugt …');
+    const as3mf = $('format').value === '3mf';
+    setBusy(true, as3mf ? '3MF wird erzeugt …' : 'STL-Dateien werden erzeugt …');
     const { st, tiles, s } = result;
+    const single = tiles.tiles.length === 1;
     try {
-      const files = [];
+      const parts = [];
       for (let k = 0; k < tiles.tiles.length; k++) {
         const t = tiles.tiles[k];
-        setStatus(`Erzeuge STL ${k + 1} von ${tiles.tiles.length} …`);
+        setStatus(`Erzeuge Kachel ${k + 1} von ${tiles.tiles.length} …`);
         await new Promise((r) => setTimeout(r, 15));
         const tris = Stencil.maskToTriangles(t.mask, t.w, t.h, st.px, s.thickness, 0.7);
-        const name = tiles.tiles.length === 1 ? `${imageName}.stl` : `${imageName}_${tileName(t)}.stl`;
-        files.push({ name, data: Stencil.trianglesToSTL(tris, name) });
+        parts.push({ name: single ? imageName : tileName(t), tris, width: t.widthMM, height: t.heightMM });
       }
-      if (files.length === 1) {
-        download(new Blob([files[0].data], { type: 'model/stl' }), files[0].name);
+      if (as3mf) {
+        setStatus('Packe 3MF …');
+        const zip = new JSZip();
+        const files = ThreeMF.build(parts, imageName);
+        for (const [path, text] of Object.entries(files)) zip.file(path, text);
+        const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 }, mimeType: 'model/3mf' });
+        download(blob, `${imageName}.3mf`);
+        setStatus(single ? '3MF heruntergeladen.' : `3MF mit ${parts.length} Platten heruntergeladen. In Bambu Studio öffnen und „Alle Platten slicen“.`);
+      } else if (single) {
+        download(new Blob([Stencil.trianglesToSTL(parts[0].tris, parts[0].name)], { type: 'model/stl' }), `${imageName}.stl`);
+        setStatus('STL heruntergeladen.');
       } else {
         setStatus('Packe ZIP …');
         const zip = new JSZip();
-        for (const f of files) zip.file(f.name, f.data);
+        for (const p of parts) zip.file(`${imageName}_${p.name}.stl`, Stencil.trianglesToSTL(p.tris, p.name));
         const png = await new Promise((r) => ui.canvas.toBlob(r, 'image/png'));
         zip.file('uebersicht.png', png);
         zip.file('anleitung.txt', instructions(tiles, st, s));
         download(await zip.generateAsync({ type: 'blob' }), `${imageName}_kacheln.zip`);
+        setStatus(`ZIP mit ${parts.length} STL-Dateien heruntergeladen.`);
       }
-      setStatus(files.length === 1 ? 'STL heruntergeladen.' : `ZIP mit ${files.length} STL-Dateien heruntergeladen.`);
     } catch (err) {
       console.error(err);
       setStatus('Fehler beim Export: ' + err.message);

@@ -37,4 +37,6 @@ Reines HTML/JavaScript ohne Build-Schritt. Die Kernlogik liegt in `stencil.js`, 
 node test/test.js   # prüft u. a., dass alle erzeugten Netze geschlossen sind
 ```
 
+Export wahlweise als 3MF-Projekt für Bambu Studio (jede Kachel auf einer eigenen Platte) oder als STL bzw. ZIP mit STLs.
+
 Verwendete Bibliotheken (im Ordner `vendor/`): [earcut](https://github.com/mapbox/earcut) (ISC) und [JSZip](https://github.com/Stuk/jszip) (MIT).
