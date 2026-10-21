@@ -48,7 +48,7 @@
       minStegMM: Math.max(0.8, num(ui.minSteg, 2)),
       bridgeMM: Math.max(0.8, num(ui.bridge, 2)),
       cornerMM: Math.max(0, num(ui.corner, 1)),
-      maxTileMM: Math.min(256, Math.max(60, num(ui.maxTile, 240))),
+      maxTileMM: Math.min(Math.min(...bed()), Math.max(60, num(ui.maxTile, 240))),
       clearanceMM: Math.max(0.05, num(ui.clearance, 0.2)),
     };
     const totalW = s.widthMM + 2 * s.borderMM, totalH = s.heightMM + 2 * s.borderMM;
@@ -97,7 +97,10 @@
 
   // --- Plattenaufteilung: wie viele Druckplatten ergibt welche Breite? ----
 
-  const BED = 256;
+  // Druckbett des gewählten Bambu-Druckers (Breite × Tiefe in mm)
+  const bed = () => $('printer').value.split('x').map(Number);
+  const tileForBed = () => Math.min(...bed()) - 16;
+  $('printer').addEventListener('change', () => { ui.maxTile.value = tileForBed(); saveSettings(); });
   function plateGeometry() {
     const s = readSettings();
     const margin = s.borderMM + s.tabMM;
@@ -111,7 +114,7 @@
     const { margin, tiles } = plateGeometry();
     const tw = width + 2 * margin, th = width * aspect() + 2 * margin;
     const nx = tiles(tw), ny = tiles(th);
-    return { nx, ny, n: nx * ny, use: (tw * th) / (nx * ny * BED * BED) };
+    return { nx, ny, n: nx * ny, use: (tw * th) / (nx * ny * bed()[0] * bed()[1]) };
   }
   function sweetSpots() {
     const { margin, cap } = plateGeometry();
@@ -458,7 +461,8 @@
         for (const [path, text] of Object.entries(files)) zip.file(path, text);
         const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 }, mimeType: 'model/3mf' });
         download(blob, `${imageName}.3mf`);
-        setStatus(single ? '3MF heruntergeladen.' : `3MF mit ${parts.length} Platten heruntergeladen. In Bambu Studio öffnen und „Alle Platten slicen“.`);
+        const other = bed()[0] !== 256 ? ' Die Datei ist für den X1C eingerichtet: In Bambu Studio oben links deinen Drucker wählen und kurz prüfen, ob jede Kachel auf ihrer Platte liegt.' : '';
+        setStatus((single ? '3MF heruntergeladen.' : `3MF mit ${parts.length} Platten heruntergeladen. In Bambu Studio öffnen und „Alle Platten slicen“.`) + other);
       } else if (single) {
         download(new Blob([Stencil.trianglesToSTL(parts[0].tris, parts[0].name)], { type: 'model/stl' }), `${imageName}.stl`);
         setStatus('STL heruntergeladen.');
