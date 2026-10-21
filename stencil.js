@@ -853,8 +853,10 @@
         if ((bx - ax) * (cy - by) - (by - ay) * (cx - bx) !== 0) pts.push(bx, by);
       }
       if (pts.length < 6) continue;
+      const dense = [];
+      for (const v0 of raw) { const x = v0 % VW; dense.push(x, (v0 - x) / VW); }
       if (!comps.has(L)) comps.set(L, []);
-      comps.get(L).push(pts);
+      comps.get(L).push({ pts, dense });
     }
     return comps;
   }
@@ -905,45 +907,114 @@
     return out;
   }
 
-  function maskToTriangles(m, w, h, p, heightMM, tolPx) {
-    const comps = traceLoops(m, w, h);
-    const tris = [];
-    const H = heightMM;
-    for (const loops of comps.values()) {
-      let polys = loops.map((l) => {
-        const s = simplifyClosed(l, tolPx);
-        const a0 = signedArea(l), a1 = signedArea(s);
-        return Math.sign(a0) === Math.sign(a1) && Math.abs(a1) > 0.25 * Math.abs(a0) ? s : l;
-      });
-      let oi = 0, best = -Infinity;
-      polys.forEach((pl, i) => { const a = signedArea(pl); if (a > best) { best = a; oi = i; } });
-      if (best <= 0) continue;
-      const ordered = [polys[oi]].concat(polys.filter((_, i) => i !== oi && signedArea(polys[i]) < 0));
-      const flat = [];
-      const holeIdx = [];
-      for (let k = 0; k < ordered.length; k++) {
-        if (k > 0) holeIdx.push(flat.length / 2);
-        for (const v of ordered[k]) flat.push(v);
+  // Glättet eine Pixelkontur: Mittelpunkte der Pixelkanten, dann einige Durchgänge
+  // eines kleinen Binomialfilters. Treppen werden zu glatten Linien und Kurven,
+  // gerade Kanten bleiben gerade, Ecken werden um etwa einen Pixel gerundet.
+  function smoothLoop(dense, iters) {
+    const n = dense.length / 2;
+    let m = new Float64Array(2 * n);
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      m[2 * i] = (dense[2 * i] + dense[2 * j]) / 2;
+      m[2 * i + 1] = (dense[2 * i + 1] + dense[2 * j + 1]) / 2;
+    }
+    let t = new Float64Array(2 * n);
+    for (let it = 0; it < iters; it++) {
+      for (let i = 0; i < n; i++) {
+        const a = (i + n - 1) % n, b = (i + 1) % n;
+        t[2 * i] = 0.25 * m[2 * a] + 0.5 * m[2 * i] + 0.25 * m[2 * b];
+        t[2 * i + 1] = 0.25 * m[2 * a + 1] + 0.5 * m[2 * i + 1] + 0.25 * m[2 * b + 1];
       }
-      const tri = fixTJunctions(earcut(flat, holeIdx, 2), flat);
-      for (let i = 0; i < flat.length; i++) flat[i] *= p;
-      for (const [a, b0, c0] of tri) {
-        let b = b0, c = c0;
-        if (cross(flat, a, b, c) < 0) { const tmp = b; b = c; c = tmp; }
-        tris.push(flat[2 * a], flat[2 * a + 1], H, flat[2 * b], flat[2 * b + 1], H, flat[2 * c], flat[2 * c + 1], H);
-        tris.push(flat[2 * a], flat[2 * a + 1], 0, flat[2 * c], flat[2 * c + 1], 0, flat[2 * b], flat[2 * b + 1], 0);
-      }
-      for (const pl of ordered) {
-        const n = pl.length / 2;
-        for (let i = 0; i < n; i++) {
-          const j = (i + 1) % n;
-          const ax = pl[2 * i] * p, ay = pl[2 * i + 1] * p, bx = pl[2 * j] * p, by = pl[2 * j + 1] * p;
-          tris.push(ax, ay, 0, bx, by, 0, bx, by, H);
-          tris.push(ax, ay, 0, bx, by, H, ax, ay, H);
-        }
+      const tmp = m; m = t; t = tmp;
+    }
+    return Array.from(m);
+  }
+
+  // Trianguliert eine Komponente (Außenkontur + Löcher) zu einem geschlossenen Körper.
+  // Liefert null, wenn das Ergebnis nicht wasserdicht wäre.
+  function triangulateComponent(polys, p, H, latticeFix) {
+    let oi = 0, best = -Infinity;
+    polys.forEach((pl, i) => { const a = signedArea(pl); if (a > best) { best = a; oi = i; } });
+    if (best <= 0) return [];
+    const ordered = [polys[oi]].concat(polys.filter((_, i) => i !== oi && signedArea(polys[i]) < 0));
+    const flat = [];
+    const holeIdx = [];
+    const starts = [];
+    for (let k = 0; k < ordered.length; k++) {
+      if (k > 0) holeIdx.push(flat.length / 2);
+      starts.push(flat.length / 2);
+      for (const v of ordered[k]) flat.push(v);
+    }
+    const nv = flat.length / 2;
+    let tri = earcut(flat, holeIdx, 2);
+    if (latticeFix) tri = fixTJunctions(tri, flat);
+    else {
+      const g = [];
+      for (let t = 0; t < tri.length; t += 3) g.push([tri[t], tri[t + 1], tri[t + 2]]);
+      tri = g;
+    }
+
+    // Prüfen: jede gerichtete Kante genau einmal, ihre Gegenkante ebenfalls genau einmal
+    const edges = new Map();
+    const addE = (a, b) => { const k = a * 2 * nv + b; edges.set(k, (edges.get(k) || 0) + 1); };
+    const faces = [];
+    for (const [a, b0, c0] of tri) {
+      let b = b0, c = c0;
+      const cr = cross(flat, a, b, c);
+      if (cr === 0) return null;
+      if (cr < 0) { const tmp = b; b = c; c = tmp; }
+      faces.push([a + nv, b + nv, c + nv], [a, c, b]);
+    }
+    for (let k = 0; k < ordered.length; k++) {
+      const s0 = starts[k], n = ordered[k].length / 2;
+      for (let i = 0; i < n; i++) {
+        const a = s0 + i, b = s0 + ((i + 1) % n);
+        faces.push([a, b, b + nv], [a, b + nv, a + nv]);
       }
     }
-    return new Float32Array(tris);
+    for (const [a, b, c] of faces) { addE(a, b); addE(b, c); addE(c, a); }
+    for (const [k, cnt] of edges) {
+      const a = Math.floor(k / (2 * nv)), b = k - a * 2 * nv;
+      if (cnt !== 1 || edges.get(b * 2 * nv + a) !== 1) return null;
+    }
+    const out = [];
+    const P = (v) => (v < nv ? [flat[2 * v] * p, flat[2 * v + 1] * p, 0] : [flat[2 * (v - nv)] * p, flat[2 * (v - nv) + 1] * p, H]);
+    for (const [a, b, c] of faces) out.push(...P(a), ...P(b), ...P(c));
+    return out;
+  }
+
+  /*
+   * smooth: Konturen glätten (sonst exakte Pixelkanten). Wenn eine geglättete
+   * Komponente nicht sauber trianguliert, wird für sie die Pixelkontur verwendet.
+   */
+  function maskToTriangles(m, w, h, p, heightMM, tolPx, smooth) {
+    const comps = traceLoops(m, w, h);
+    const tris = [];
+    let fallbacks = 0;
+    for (const loops of comps.values()) {
+      let res = null;
+      if (smooth) {
+        const polys = loops.map((l) => {
+          const sm = simplifyClosed(smoothLoop(l.dense, 4), 0.12);
+          const a0 = signedArea(l.pts), a1 = signedArea(sm);
+          return Math.sign(a0) === Math.sign(a1) && Math.abs(a1 - a0) < 0.2 * Math.abs(a0) + 2 ? sm : null;
+        });
+        if (polys.every(Boolean)) res = triangulateComponent(polys, p, heightMM, false);
+        if (!res) fallbacks++;
+      }
+      if (!res) {
+        const polys = loops.map((l) => {
+          const sm = simplifyClosed(l.pts, tolPx);
+          const a0 = signedArea(l.pts), a1 = signedArea(sm);
+          return Math.sign(a0) === Math.sign(a1) && Math.abs(a1) > 0.25 * Math.abs(a0) ? sm : l.pts;
+        });
+        res = triangulateComponent(polys, p, heightMM, true) || [];
+      }
+      for (const v of res) tris.push(v);
+    }
+    const out = new Float32Array(tris);
+    out.fallbacks = fallbacks;
+    return out;
   }
 
   function trianglesToSTL(tris, name) {

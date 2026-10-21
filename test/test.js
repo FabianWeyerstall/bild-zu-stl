@@ -19,7 +19,7 @@ const tl = S.makeTiles(st, { maxTileMM: 240, clearanceMM: 0.2, knobR: 3.5, neckW
 console.log('tiles', tl.nx, tl.ny, 'knobs', tl.knobs.length, Date.now() - t, 'ms');
 let bad = 0;
 for (const tile of tl.tiles) {
-  const tris = S.maskToTriangles(tile.mask, tile.w, tile.h, p, 0.4, 0.7);
+  const tris = S.maskToTriangles(tile.mask, tile.w, tile.h, p, 0.4, 0.7, process.env.SMOOTH !== "0");
   // Mannigfaltigkeit: jede gerichtete Kante genau einmal, Gegenkante genau einmal
   const E = new Map();
   const key = (i) => tris[i].toFixed(4) + ',' + tris[i + 1].toFixed(4) + ',' + tris[i + 2].toFixed(4);

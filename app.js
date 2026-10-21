@@ -93,7 +93,7 @@
   function syncWidth() { ui.width.value = Math.round(num(ui.height, 300) / aspect()); syncPlates(); }
   ui.width.addEventListener('input', () => { syncHeight(); schedule(); });
   ui.height.addEventListener('input', () => { syncWidth(); schedule(); });
-  $('widthRange').addEventListener('input', (e) => { ui.width.value = e.target.value; syncHeight(); schedule(); });
+  $('widthRange').addEventListener('input', (e) => { ui.width.value = e.target.value; syncHeight(); saveSettings(); schedule(); });
 
   // --- Plattenaufteilung: wie viele Druckplatten ergibt welche Breite? ----
 
@@ -149,20 +149,52 @@
       b.innerHTML = `<b>${e.n}</b> ${e.n === 1 ? 'Platte' : 'Platten'}: ${e.w} mm`;
       b.title = `${e.n} ${e.n === 1 ? 'Platte' : 'Platten'} (${e.nx} × ${e.ny}), Breite bis ${e.w} mm`;
       if (e.n === p.n) b.classList.add('active');
-      b.addEventListener('click', () => { ui.width.value = e.w; syncHeight(); schedule(0); });
+      b.addEventListener('click', () => { ui.width.value = e.w; syncHeight(); saveSettings(); schedule(0); });
       box.appendChild(b);
     }
   }
 
   ui.threshold.addEventListener('input', () => { ui.thresholdOut.textContent = ui.threshold.value; schedule(); });
   document.querySelectorAll('#settings input, #settings select').forEach((el) => {
-    if (el === ui.width || el === ui.height || el === ui.threshold || el === ui.file || el.id === 'format' || el.id === 'widthRange') return;
+    if (el === ui.width || el === ui.height || el === ui.threshold || el === ui.file || el.id === 'format' || el.id === 'widthRange' || el.id === 'vector') return;
     el.addEventListener('change', () => { syncPlates(); schedule(); });
   });
   ui.overlay.addEventListener('change', () => result && render());
+
+  // --- Einstellungen im Browser merken -----------------------------------
+
+  const STORE = 'bild-zu-stl:einstellungen';
+  const storable = () => [...document.querySelectorAll('#settings input, #settings select')]
+    .filter((el) => el !== ui.file && el !== ui.height && el.id !== 'widthRange');
+  const key = (el) => (el.type === 'radio' ? el.name + '=' + el.value : el.id);
+  function saveSettings() {
+    const data = {};
+    for (const el of storable()) data[key(el)] = el.type === 'checkbox' || el.type === 'radio' ? el.checked : el.value;
+    try { localStorage.setItem(STORE, JSON.stringify(data)); } catch (e) { /* privates Fenster o. ä. */ }
+  }
+  function restoreSettings() {
+    let data = null;
+    try { data = JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (e) { data = null; }
+    if (!data) return;
+    for (const el of storable()) {
+      const v = data[key(el)];
+      if (v === undefined) continue;
+      if (el.type === 'checkbox' || el.type === 'radio') el.checked = !!v;
+      else el.value = v;
+    }
+    ui.thresholdOut.textContent = ui.threshold.value;
+  }
+  restoreSettings();
+  syncHeight();
+  storable().forEach((el) => { el.addEventListener('change', saveSettings); el.addEventListener('input', saveSettings); });
+  $('resetSettings').addEventListener('click', () => {
+    try { localStorage.removeItem(STORE); } catch (e) { /* egal */ }
+    location.reload();
+  });
   syncPlates();
   const syncThinHint = () => { $('thinHint').hidden = radio('thick') > 0.25; };
   document.querySelectorAll('input[name=thick]').forEach((el) => el.addEventListener('change', syncThinHint));
+  syncThinHint();
 
   // --- Berechnung ---------------------------------------------------------
 
@@ -416,7 +448,7 @@
         const t = tiles.tiles[k];
         setStatus(`Erzeuge Kachel ${k + 1} von ${tiles.tiles.length} …`);
         await new Promise((r) => setTimeout(r, 15));
-        const tris = Stencil.maskToTriangles(t.mask, t.w, t.h, st.px, s.thickness, 0.7);
+        const tris = Stencil.maskToTriangles(t.mask, t.w, t.h, st.px, s.thickness, 0.7, $('vector').checked);
         parts.push({ name: single ? imageName : tileName(t), tris, width: t.widthMM, height: t.heightMM });
       }
       if (as3mf) {

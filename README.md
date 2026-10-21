@@ -19,6 +19,8 @@ Die App passt das Bild automatisch an:
 - **Stege** zwischen Öffnungen werden nicht schmaler als die Mindest-Stegbreite (Standard 2 mm).
 - **Inseln** (z. B. das Innere eines „O“) bekommen automatisch einen kurzen, geraden Haltesteg zur nächstgelegenen Kante, genau einen pro Insel.
 - **Ecken** werden abgerundet (Standard 1 mm), damit der Marker nirgends hängen bleibt, z. B. dort, wo ein Steg auf eine Linie trifft.
+- **Kanten glätten** (Standard an): Die Konturen werden im Netz als glatte Kurven statt als Pixelstufen ausgegeben. Falls eine Kontur dabei nicht sauber schließt, nimmt die App für dieses Teil automatisch die Pixelkontur.
+- **Einstellungen** werden im Browser gespeichert und beim nächsten Besuch wiederhergestellt („Einstellungen zurücksetzen“ unter „Erweitert“).
 - **Stege bearbeiten:** Klick auf einen Steg setzt ihn an die nächstbeste Stelle, Ziehen von Kante zu Kante setzt einen eigenen Steg.
 - **Klebelaschen** am Außenrand zum Festkleben mit Malerkrepp (optional, standardmäßig aus).
 - **Große Bilder** werden in Kacheln aufgeteilt, die auf die Druckplatte passen (Standard max. 240 mm, Bambu Lab X1C hat 256 × 256 mm). Die Schnitte werden dorthin gelegt, wo sie möglichst wenige Linien kreuzen. Die Kacheln haben Puzzle-Verbinder und kommen als ZIP mit einer STL pro Kachel, einer Übersicht und einer kurzen Anleitung.

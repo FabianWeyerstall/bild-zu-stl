@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Bild zu STL</title>
   <meta name="description" content="Erzeugt aus einem Bild eine 3D-druckbare Schablone (STL) zum Nachmalen mit Kreidemarkern auf Glas und Wänden.">
-  <link rel="stylesheet" href="style.css?v=10">
+  <link rel="icon" href="favicon.svg?v=11" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=11">
+  <link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
   <header>
@@ -63,6 +65,7 @@
           </select>
         </label>
         <label>Ecken abrunden (mm)<input type="number" id="corner" value="1" min="0" max="5" step="0.1"></label>
+        <label class="check"><input type="checkbox" id="vector" checked>Kanten glätten (statt Pixelstufen)</label>
       </section>
 
       <section>
@@ -81,6 +84,8 @@
         <label>Max. Kachelgröße (mm)<input type="number" id="maxTile" value="240" min="60" max="256" step="1"></label>
         <label>Spiel der Puzzle-Verbinder (mm)<input type="number" id="clearance" value="0.2" min="0.05" max="1" step="0.05"></label>
         <p class="hint">Bambu Lab X1C: Druckplatte 256 × 256 mm. 240 mm lässt etwas Rand.</p>
+        <p class="hint">Deine Einstellungen werden in diesem Browser gespeichert.</p>
+        <button type="button" id="resetSettings" class="secondary">Einstellungen zurücksetzen</button>
       </details>
 
       <section class="actions">
@@ -123,11 +128,11 @@
     <p>Tipp für Bambu Studio: Schichthöhe 0,2 mm, erste Schicht 0,2 mm. Die Kacheln stecken mit den Puzzle-Verbindern zusammen. <a href="https://github.com/FabianWeyerstall/bild-zu-stl">Quellcode</a></p>
   </footer>
 
-  <script src="vendor/earcut.min.js?v=10"></script>
-  <script src="vendor/jszip.min.js?v=10"></script>
-  <script src="stencil.js?v=10"></script>
-  <script src="vendor/bambu-project-settings.js?v=10"></script>
-  <script src="threemf.js?v=10"></script>
-  <script src="app.js?v=10"></script>
+  <script src="vendor/earcut.min.js?v=11"></script>
+  <script src="vendor/jszip.min.js?v=11"></script>
+  <script src="stencil.js?v=11"></script>
+  <script src="vendor/bambu-project-settings.js?v=11"></script>
+  <script src="threemf.js?v=11"></script>
+  <script src="app.js?v=11"></script>
 </body>
 </html>
