@@ -30,6 +30,7 @@
           <label>Höhe (mm)<input type="number" id="height" value="300" min="20" max="5000" step="1"></label>
         </div>
         <label>Rand um das Bild (mm)<input type="number" id="border" value="10" min="0" max="100" step="1"></label>
+        <label class="check"><input type="checkbox" id="tabs" checked>Klebelaschen am Außenrand</label>
         <p class="hint" id="sizeInfo"></p>
       </section>
 
@@ -91,10 +92,14 @@
         </ul>
       </div>
       <div class="stage" id="stage">
-        <canvas id="canvas"></canvas>
+        <div class="canvasWrap"><canvas id="canvas"></canvas><svg id="drag" aria-hidden="true"></svg></div>
         <p class="empty" id="empty">Lade ein Bild, um die Vorschau zu sehen.</p>
       </div>
       <p class="hint" id="info"></p>
+      <div class="edit">
+        <p class="hint"><strong>Stege bearbeiten:</strong> Klick auf einen roten Steg setzt ihn an die nächstbeste Stelle. Ziehen von Kante zu Kante setzt einen eigenen Steg, ein Klick darauf entfernt ihn wieder.</p>
+        <button type="button" class="secondary" id="resetEdits" disabled>Stege zurücksetzen</button>
+      </div>
     </section>
   </main>
 

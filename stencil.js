@@ -208,10 +208,47 @@
    * wie nötig, und eine Insel in einer Insel wird an die nächstgelegene angebunden.
    * allowed (optional): nur dort dürfen Stege entstehen.
    */
-  function addBridges(mat, W, H, radius, allowed) {
-    const bridgeMask = new Uint8Array(W * H);
+  function segDist2(px, py, ax, ay, bx, by) {
+    const dx = bx - ax, dy = by - ay;
+    const l2 = dx * dx + dy * dy;
+    let t = l2 ? ((px - ax) * dx + (py - ay) * dy) / l2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    const ex = ax + t * dx - px, ey = ay + t * dy - py;
+    return ex * ex + ey * ey;
+  }
+
+  // Zeichnet einen Steg (Linie mit Radius) in die Maske. Liefert die getroffenen Pixel.
+  function drawBridge(mat, W, H, ax, ay, bx, by, disk, allowed, bridgeMask) {
+    const len = Math.hypot(bx - ax, by - ay);
+    const steps = Math.max(1, Math.ceil(len * 2));
+    for (let s = 0; s <= steps; s++) {
+      const x = Math.round(ax + ((bx - ax) * s) / steps), y = Math.round(ay + ((by - ay) * s) / steps);
+      for (const [dx, dy] of disk) {
+        const xx = x + dx, yy = y + dy;
+        if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
+        const q = yy * W + xx;
+        if (!mat[q] && (!allowed || allowed[q])) { mat[q] = 1; bridgeMask[q] = 1; }
+      }
+    }
+  }
+
+  /*
+   * excluded: Liste [x, y] (Rasterkoordinaten). Stege, die näher als exR an einem
+   * dieser Punkte vorbeiführen würden, werden nicht gesetzt (vom Nutzer entfernt).
+   */
+  function addBridges(mat, W, H, radius, allowed, excluded, exR, bridgeMask) {
+    bridgeMask = bridgeMask || new Uint8Array(W * H);
+    const segments = [];
     const { lab, n } = label(mat, W, H);
-    if (n <= 1) return { bridgeMask, bridged: 0 };
+    if (n <= 1) return { bridgeMask, bridged: 0, segments, loose: 0 };
+    const ex = excluded || [];
+    const exR2 = (exR || 0) * (exR || 0);
+    const isExcluded = (fi, fj) => {
+      if (!ex.length) return false;
+      const ax = fi % W, ay = (fi - ax) / W, bx = fj % W, by = (fj - bx) / W;
+      for (const [px, py] of ex) if (segDist2(px, py, ax, ay, bx, by) < exR2) return true;
+      return false;
+    };
     const { D, F } = featureTransform(mat, W, H);
 
     const best = new Map();
@@ -223,7 +260,7 @@
       const cost = Math.sqrt(D[i]) + Math.sqrt(D[j]);
       const key = A < B ? A * (n + 1) + B : B * (n + 1) + A;
       const cur = best.get(key);
-      if (!cur || cost < cur[0]) best.set(key, [cost, fi, fj, A, B]);
+      if ((!cur || cost < cur[0]) && !isExcluded(fi, fj)) best.set(key, [cost, fi, fj, A, B]);
     };
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < W; x++) {
@@ -246,7 +283,6 @@
       const ax = fi % W, ay = (fi - ax) / W, bx = fj % W, by = (fj - bx) / W;
       const len = Math.hypot(bx - ax, by - ay);
       const steps = Math.max(1, Math.ceil(len * 2));
-      const line = [];
       const crossed = new Set();
       let ok = true;
       for (let s = 0; s <= steps; s++) {
@@ -254,23 +290,17 @@
         const q = y * W + x;
         if (mat[q]) crossed.add(lab[q]);
         else if (allowed && !allowed[q]) { ok = false; break; }
-        line.push(q);
       }
       if (!ok) continue;
-      for (const q0 of line) {
-        const x = q0 % W, y = (q0 - x) / W;
-        for (const [dx, dy] of disk) {
-          const xx = x + dx, yy = y + dy;
-          if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
-          const q = yy * W + xx;
-          if (!mat[q] && (!allowed || allowed[q])) { mat[q] = 1; bridgeMask[q] = 1; }
-        }
-      }
+      drawBridge(mat, W, H, ax, ay, bx, by, disk, allowed, bridgeMask);
+      segments.push([ax, ay, bx, by]);
       for (const L of crossed) union(A, L);
       union(A, B);
       bridged++;
     }
-    return { bridgeMask, bridged };
+    const roots = new Set();
+    for (let k = 1; k <= n; k++) roots.add(find(k));
+    return { bridgeMask, bridged, segments, loose: roots.size - 1 };
   }
 
   // ---------------------------------------------------------------------------
@@ -279,11 +309,18 @@
 
   /*
    * gray: Uint8Array (iw*ih), Bild bereits auf das Raster (px mm pro Pixel) skaliert.
-   * opts: { px, threshold, invert, markerMM, minStegMM, bridgeMM, borderMM, widenThin, smoothMM }
+   * opts: { px, threshold, invert, markerMM, minStegMM, bridgeMM, borderMM, tabMM, widenThin, smoothMM, cornerMM }
+   * edits (optional): { removed: [[x, y]], added: [[ax, ay, bx, by]] } in Rasterkoordinaten
    */
-  function buildStencil(gray, iw, ih, opts) {
+  function buildStencil(gray, iw, ih, opts, edits) {
+    return finishStencil(prepareStencil(gray, iw, ih, opts), opts, edits);
+  }
+
+  // Teurer Teil: Bild -> Material/Öffnungen mit Marker- und Stegbreite (ohne Haltestege).
+  function prepareStencil(gray, iw, ih, opts) {
     const p = opts.px;
-    const b = Math.max(0, Math.round(opts.borderMM / p));
+    const tm = Math.max(0, Math.round((opts.tabMM || 0) / p));
+    const b = Math.max(0, Math.round(opts.borderMM / p)) + tm;
     const W = iw + 2 * b, H = ih + 2 * b;
 
     let g = gray;
@@ -324,12 +361,31 @@
     }
 
     // 2) Stege mindestens so breit wie die Mindest-Stegbreite
+    // Außerhalb des Rahmens (Platz für Klebelaschen) ist kein Material
+    const area = new Uint8Array(W * H);
+    for (let y = tm; y < H - tm; y++) for (let x = tm; x < W - tm; x++) area[y * W + x] = 1;
     let mat = new Uint8Array(W * H);
-    for (let i = 0; i < W * H; i++) mat[i] = holes[i] ? 0 : 1;
+    for (let i = 0; i < W * H; i++) mat[i] = holes[i] || !area[i] ? 0 : 1;
     mat = opening(mat, W, H, opts.minStegMM / p / 2);
 
+    return { W, H, px: p, border: b, tab: tm, mat, holes0, area };
+  }
+
+  // Günstiger Teil: Haltestege (inkl. Änderungen von Hand), Ecken abrunden.
+  function finishStencil(base, opts, edits) {
+    const { W, H, px: p, area } = base;
+    const mat = base.mat.slice();
+    const radius = opts.bridgeMM / p / 2;
+    const disk = diskOffsets(Math.max(1, radius), W);
+    const bridgeMask = new Uint8Array(W * H);
+    const manual = [];
+    for (const [ax, ay, bx, by] of (edits && edits.added) || []) {
+      drawBridge(mat, W, H, ax, ay, bx, by, disk, area, bridgeMask);
+      manual.push([ax, ay, bx, by]);
+    }
+
     // 3) Inseln mit Haltestegen anbinden
-    const { bridgeMask, bridged } = addBridges(mat, W, H, opts.bridgeMM / p / 2);
+    const res = addBridges(mat, W, H, radius, area, (edits && edits.removed) || [], radius + 3 / p, bridgeMask);
 
     // 4) Ecken abrunden, damit der Marker nirgends hängen bleibt
     roundCorners(mat, W, H, opts);
@@ -337,7 +393,11 @@
     // 5) Diagonale Berührungen schließen
     fixDiagonals(mat, W, H, true);
 
-    return { W, H, px: p, border: b, mat, holes0, bridgeMask, bridged };
+    return {
+      W, H, px: p, border: base.border, tab: base.tab, area, removed: (edits && edits.removed) || [], markMask: new Uint8Array(W * H), mat, holes0: base.holes0, bridgeMask,
+      bridged: res.bridged + manual.length, loose: res.loose,
+      bridges: res.segments.map((sg) => ({ seg: sg, manual: false })).concat(manual.map((sg) => ({ seg: sg, manual: true }))),
+    };
   }
 
   function boxBlur(src, W, H, r) {
@@ -493,6 +553,48 @@
       }
     }
 
+    // Klebelaschen an den Außenkanten, je Kachel mindestens eine pro Außenkante
+    const tm = st.tab || 0;
+    if (tm > 0) {
+      const tw = (opts.tabWidthMM || 20) / p / 2;
+      const rr = Math.min(4 / p, tm / 2, tw);
+      const keep = tw + 3 / p;
+      const drawTab = (side, centre, tile) => {
+        // side: 0 oben, 1 unten, 2 links, 3 rechts; centre: Position entlang der Kante
+        for (let a = Math.floor(centre - tw); a <= Math.ceil(centre + tw); a++) {
+          for (let d = 0; d < tm + 2; d++) {
+            // d: Abstand von der äußeren Gitterkante nach innen
+            const x = side < 2 ? a : side === 2 ? d : W - 1 - d;
+            const y = side < 2 ? (side === 0 ? d : H - 1 - d) : a;
+            if (x < 0 || y < 0 || x >= W || y >= H) continue;
+            const i = y * W + x;
+            if (st.area && st.area[i]) continue;
+            const u = a + 0.5 - centre;
+            if (Math.abs(u) > tw) continue;
+            // äußere Ecken abrunden
+            const cu = Math.abs(u) - (tw - rr), cd = rr - (d + 0.5);
+            if (cu > 0 && cd > 0 && cu * cu + cd * cd > rr * rr) continue;
+            mat[i] = 1;
+            assign[i] = tile;
+          }
+        }
+      };
+      const along = (lo, hi, side, tileOf) => {
+        const len = hi - lo;
+        if (len < 2 * keep) return;
+        const k = Math.max(1, Math.round((len * p) / 120));
+        for (let j = 0; j < k; j++) drawTab(side, lo + keep + ((j + 0.5) * (len - 2 * keep)) / k, tileOf);
+      };
+      for (let c = 0; c < nx; c++) {
+        along(cutX[c], cutX[c + 1], 0, c);
+        along(cutX[c], cutX[c + 1], 1, (ny - 1) * nx + c);
+      }
+      for (let r = 0; r < ny; r++) {
+        along(cutY[r], cutY[r + 1], 2, r * nx);
+        along(cutY[r], cutY[r + 1], 3, r * nx + nx - 1);
+      }
+    }
+
     // Spalt zwischen den Kacheln (immer auf Seite der höheren Kachelnummer)
     const gapPx = Math.max(1, Math.round(opts.clearanceMM / p));
     const gap = new Uint8Array(W * H);
@@ -545,7 +647,10 @@
         const minArea = 2 / (p * p);
         const pre = label(m, w, h);
         for (let i = 0; i < w * h; i++) if (m[i] && pre.sizes[pre.lab[i]] < minArea) m[i] = 0;
-        const tb = addBridges(m, w, h, (opts.bridgeMM || 2) / p / 2, allowed);
+        const br = (opts.bridgeMM || 2) / p / 2;
+        const excl = (st.removed || []).map(([x, y]) => [x - x0, y - y0]);
+        const tb = addBridges(m, w, h, br, allowed, excl, br + 3 / p);
+        if (st.bridges) for (const [ax, ay, bx, by] of tb.segments) st.bridges.push({ seg: [ax + x0, ay + y0, bx + x0, by + y0], manual: false });
         for (let y = 0; y < h; y++) {
           for (let x = 0; x < w; x++) {
             if (!tb.bridgeMask[y * w + x]) continue;
@@ -562,10 +667,101 @@
         for (let k = 1; k <= n; k++) if (sizes[k] >= minArea) pieces++;
         for (let i = 0; i < w * h; i++) if (m[i] && sizes[lab[i]] < minArea) m[i] = 0;
         fixDiagonals(m, w, h, false);
-        tiles.push({ row: r, col: c, x0, y0, w, h, mask: m, pieces, widthMM: w * p, heightMM: h * p });
+        let labelled = false;
+        if (nx * ny > 1) {
+          const area = new Uint8Array(w * h);
+          for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) area[y * w + x] = !st.area || st.area[(y + y0) * W + x + x0] ? 1 : 0;
+          const cut = stampNumber(m, w, h, p, `${r + 1}-${c + 1}`, area);
+          if (cut) {
+            labelled = true;
+            for (const k of cut) {
+              const x = k % w, y = (k - x) / w;
+              const i = (y + y0) * W + (x + x0);
+              mat[i] = 0;
+              if (st.markMask) st.markMask[i] = 1;
+            }
+          }
+        }
+        tiles.push({ row: r, col: c, x0, y0, w, h, mask: m, pieces, labelled, widthMM: w * p, heightMM: h * p });
       }
     }
     return { nx, ny, cutX, cutY, tiles, knobs, assign, gap };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Kachelnummer als Ausschnitt (Segmentziffern ohne geschlossene Formen,
+  // damit keine Inseln entstehen)
+  // ---------------------------------------------------------------------------
+
+  const SEG = { 0: 'abcdef', 1: 'bc', 2: 'abged', 3: 'abgcd', 4: 'fgbc', 5: 'afgcd', 6: 'afgedc', 7: 'abc', 8: 'abcdefg', 9: 'abcdfg', '-': 'g' };
+
+  function numberRects(text) {
+    const cw = 4, ch = 6, t = 0.8, g = 0.45, space = 1.2;
+    const rects = [];
+    let x = 0;
+    for (const chr of text) {
+      const segs = SEG[chr] || '';
+      if (chr === '-') {
+        rects.push([x + 0.3, (ch - t) / 2, x + 2.1, (ch + t) / 2]);
+        x += 2.4 + space;
+        continue;
+      }
+      const R = {
+        a: [t + g, 0, cw - t - g, t],
+        g: [t + g, (ch - t) / 2, cw - t - g, (ch + t) / 2],
+        d: [t + g, ch - t, cw - t - g, ch],
+        f: [0, 0, t, ch / 2 - g / 2],
+        b: [cw - t, 0, cw, ch / 2 - g / 2],
+        e: [0, ch / 2 + g / 2, t, ch],
+        c: [cw - t, ch / 2 + g / 2, cw, ch],
+      };
+      for (const sname of segs) {
+        const [a, b, c2, d] = R[sname];
+        rects.push([x + a, b, x + c2, d]);
+      }
+      x += cw + space;
+    }
+    return { rects, width: x - space, height: ch };
+  }
+
+  // Sucht eine volle Materialfläche (möglichst oben links) und schneidet die Nummer aus.
+  function stampNumber(m, w, h, p, text, area) {
+    const { rects, width, height } = numberRects(text);
+    const margin = 1.5;
+    const bw = Math.ceil((width + 2 * margin) / p), bh = Math.ceil((height + 2 * margin) / p);
+    if (bw >= w || bh >= h) return null;
+    const S = new Int32Array((w + 1) * (h + 1));
+    for (let y = 0; y < h; y++) {
+      let row = 0;
+      for (let x = 0; x < w; x++) {
+        row += m[y * w + x] && area[y * w + x] ? 1 : 0;
+        S[(y + 1) * (w + 1) + x + 1] = S[y * (w + 1) + x + 1] + row;
+      }
+    }
+    const full = bw * bh;
+    const step = Math.max(1, Math.round(0.5 / p));
+    let best = null, bestD = Infinity;
+    for (let y = 0; y + bh <= h; y += step) {
+      for (let x = 0; x + bw <= w; x += step) {
+        if (x + y >= bestD) break;
+        const sum = S[(y + bh) * (w + 1) + x + bw] - S[y * (w + 1) + x + bw] - S[(y + bh) * (w + 1) + x] + S[y * (w + 1) + x];
+        if (sum === full) { best = [x, y]; bestD = x + y; }
+      }
+    }
+    if (!best) return null;
+    const ox = best[0] * p + margin, oy = best[1] * p + margin;
+    const cut = [];
+    for (const [a, b, c, d] of rects) {
+      for (let y = Math.floor((oy + b) / p); y < Math.ceil((oy + d) / p); y++) {
+        for (let x = Math.floor((ox + a) / p); x < Math.ceil((ox + c) / p); x++) {
+          const cxm = (x + 0.5) * p, cym = (y + 0.5) * p;
+          if (cxm < ox + a || cxm > ox + c || cym < oy + b || cym > oy + d) continue;
+          const k = y * w + x;
+          if (m[k]) { m[k] = 0; cut.push(k); }
+        }
+      }
+    }
+    return cut;
   }
 
   // ---------------------------------------------------------------------------
@@ -775,7 +971,7 @@
   }
 
   return {
-    buildStencil, planTiles, makeTiles, maskToTriangles, trianglesToSTL,
+    buildStencil, prepareStencil, finishStencil, planTiles, makeTiles, maskToTriangles, trianglesToSTL,
     // für Tests
     _internal: { opening, erode, dilate, label, fixDiagonals, traceLoops, simplifyClosed, signedArea, addBridges },
   };

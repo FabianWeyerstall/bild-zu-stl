@@ -10,6 +10,7 @@
     minSteg: $('minSteg'), corner: $('corner'), bridge: $('bridge'), maxTile: $('maxTile'), clearance: $('clearance'),
     exportBtn: $('export'), status: $('status'), info: $('info'),
     overlay: $('overlay'), canvas: $('canvas'), empty: $('empty'),
+    tabs: $('tabs'), drag: $('drag'), resetEdits: $('resetEdits'),
   };
 
   const KNOB = { knobR: 3.5, neckW: 3.5, neckL: 2, knobSpacing: 40 };
@@ -21,6 +22,9 @@
   let timer = null;
   let running = false;
   let pending = false;
+  let base = null, baseKey = '';
+  // Änderungen an Stegen, relativ zur Bildfläche (0..1), damit sie Größenänderungen überstehen
+  let edits = { removed: [], added: [] };
 
   const num = (el, def) => {
     const v = parseFloat(String(el.value).replace(',', '.'));
@@ -34,6 +38,7 @@
       widthMM: Math.max(20, num(ui.width, 400)),
       heightMM: Math.max(20, num(ui.height, 300)),
       borderMM: Math.max(0, num(ui.border, 10)),
+      tabMM: ui.tabs.checked ? 12 : 0,
       thickness: radio('thick'),
       markerMM: radio('marker'),
       widenThin: ui.thin.value === 'widen',
@@ -65,6 +70,8 @@
     const img = new Image();
     img.onload = () => {
       image = img;
+      base = null;
+      edits = { removed: [], added: [] };
       ui.dropText.textContent = `${file.name} (${img.naturalWidth} × ${img.naturalHeight} px)`;
       ui.empty.style.display = 'none';
       syncHeight();
@@ -131,8 +138,13 @@
     try {
       const s = readSettings();
       const t0 = performance.now();
-      const { gray, iw, ih } = rasterize(s);
-      const st = Stencil.buildStencil(gray, iw, ih, s);
+      const key = JSON.stringify([s.px, s.widthMM, s.heightMM, s.borderMM, s.tabMM, s.markerMM, s.widenThin, s.threshold, s.invert, s.smoothMM, s.minStegMM]);
+      if (!base || key !== baseKey) {
+        const { gray, iw, ih } = rasterize(s);
+        base = Stencil.prepareStencil(gray, iw, ih, s);
+        baseKey = key;
+      }
+      const st = Stencil.finishStencil(base, s, gridEdits(base));
       const tiles = Stencil.makeTiles(st, { ...s, ...KNOB });
       result = { st, tiles, s };
       render();
@@ -145,6 +157,87 @@
     running = false;
     if (pending) { pending = false; run(); }
   }
+
+  // --- Stege von Hand bearbeiten -----------------------------------------
+
+  function toGrid(g, u, v) {
+    const b = g.border;
+    return [b + u * (g.W - 2 * b), b + v * (g.H - 2 * b)];
+  }
+  function toUnit(g, x, y) {
+    const b = g.border;
+    return [(x - b) / (g.W - 2 * b), (y - b) / (g.H - 2 * b)];
+  }
+  function gridEdits(g) {
+    return {
+      removed: edits.removed.map(([u, v]) => toGrid(g, u, v)),
+      added: edits.added.map(([u1, v1, u2, v2]) => toGrid(g, u1, v1).concat(toGrid(g, u2, v2))),
+    };
+  }
+  function eventToGrid(e) {
+    const r = ui.canvas.getBoundingClientRect();
+    return [((e.clientX - r.left) / r.width) * ui.canvas.width, ((e.clientY - r.top) / r.height) * ui.canvas.height];
+  }
+  function segDist(px, py, [ax, ay, bx, by]) {
+    const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+    const t = l2 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l2)) : 0;
+    return Math.hypot(ax + t * dx - px, ay + t * dy - py);
+  }
+
+  let dragStart = null;
+  ui.canvas.addEventListener('pointerdown', (e) => {
+    if (!result || running) return;
+    ui.canvas.setPointerCapture(e.pointerId);
+    dragStart = { grid: eventToGrid(e), x: e.clientX, y: e.clientY };
+  });
+  ui.canvas.addEventListener('pointermove', (e) => {
+    if (!dragStart) return;
+    const [x, y] = eventToGrid(e);
+    const [ax, ay] = dragStart.grid;
+    const { st, s } = result;
+    ui.drag.setAttribute('viewBox', `0 0 ${st.W} ${st.H}`);
+    ui.drag.innerHTML = `<line x1="${ax}" y1="${ay}" x2="${x}" y2="${y}" stroke="#d64545" stroke-opacity="0.8" stroke-linecap="round" stroke-width="${Math.max(2, s.bridgeMM / st.px)}"/>`;
+  });
+  ui.canvas.addEventListener('pointerup', (e) => {
+    if (!dragStart) return;
+    const start = dragStart;
+    dragStart = null;
+    ui.drag.innerHTML = '';
+    const { st, s } = result;
+    const end = eventToGrid(e);
+    const moved = Math.hypot(e.clientX - start.x, e.clientY - start.y);
+    if (moved > 6) {
+      edits.added.push(toUnit(st, ...start.grid).concat(toUnit(st, ...end)));
+      setStatus('Steg gesetzt, berechne neu …');
+      schedule(0);
+      return;
+    }
+    // Klick: nächstgelegenen Steg suchen
+    const [px, py] = end;
+    let best = null, bestD = s.bridgeMM / st.px / 2 + 2.5 / st.px;
+    for (const b of st.bridges) {
+      const d = segDist(px, py, b.seg);
+      if (d < bestD) { bestD = d; best = b; }
+    }
+    if (!best) {
+      setStatus('Kein Steg an dieser Stelle. Klicke direkt auf einen roten Steg oder ziehe eine Linie für einen neuen.');
+      return;
+    }
+    const [ax, ay, bx, by] = best.seg;
+    if (best.manual) {
+      const k = st.bridges.filter((b) => b.manual).indexOf(best);
+      edits.added.splice(k, 1);
+    } else {
+      edits.removed.push(toUnit(st, (ax + bx) / 2, (ay + by) / 2));
+    }
+    setStatus('Steg verschoben, berechne neu …');
+    schedule(0);
+  });
+  ui.canvas.addEventListener('pointercancel', () => { dragStart = null; ui.drag.innerHTML = ''; });
+  ui.resetEdits.addEventListener('click', () => {
+    edits = { removed: [], added: [] };
+    schedule(0);
+  });
 
   function describe(ms) {
     const { st, tiles, s } = result;
@@ -160,6 +253,9 @@
       `Raster ${fmt(st.px, 2)} mm`,
     ].filter(Boolean);
     let text = parts.join(' · ');
+    if (edits.added.length) text += ` · ${edits.added.length} eigene${edits.added.length === 1 ? 'r' : ''} Steg${edits.added.length === 1 ? '' : 'e'}`;
+    if (st.loose) text += ` · Achtung: ${st.loose} Teil${st.loose === 1 ? '' : 'e'} ohne Halt, setze dort einen Steg von Hand`;
+    ui.resetEdits.disabled = !edits.added.length && !edits.removed.length;
     if (loose) text += ` · Hinweis: ${loose} lose${loose === 1 ? 's' : ''} Einzelteil${loose === 1 ? '' : 'e'} an Kachelkanten`;
     ui.info.textContent = text;
     setStatus(`Fertig in ${fmt(ms / 1000, 1)} s. Prüfe die Vorschau und exportiere dann.`);
@@ -190,11 +286,12 @@
     const gap = tiles.gap;
     for (let i = 0; i < W * H; i++) {
       let c;
-      if (gap[i] && mat[i]) c = C.gap;
+      if (st.markMask[i] || (gap[i] && mat[i])) c = C.gap;
       else if (bridgeMask[i] && mat[i]) c = C.bridge;
       else if (mat[i]) c = holes0[i] ? C.lost : C.mat;
       else c = holes0[i] ? C.hole : C.added;
-      d[4 * i] = c[0]; d[4 * i + 1] = c[1]; d[4 * i + 2] = c[2]; d[4 * i + 3] = 255;
+      d[4 * i] = c[0]; d[4 * i + 1] = c[1]; d[4 * i + 2] = c[2];
+      d[4 * i + 3] = !mat[i] && !st.area[i] ? 0 : 255;
     }
     ctx.putImageData(img, 0, 0);
     if (ui.overlay.checked && image) {
@@ -272,12 +369,14 @@
       `Gesamtgröße: ${fmt(st.W * st.px)} x ${fmt(st.H * st.px)} mm, Dicke ${fmt(s.thickness, 1)} mm, Marker ${fmt(s.markerMM)} mm`,
       `Kacheln: ${tiles.ny} Reihen x ${tiles.nx} Spalten. R = Reihe (von oben), S = Spalte (von links).`,
       'Die Lage jeder Kachel siehst du in uebersicht.png.',
+      'Jede Kachel hat ihre Nummer als kleinen Ausschnitt: "1-2" heißt Reihe 1, Spalte 2.',
       '',
       'Drucken (Bambu Studio):',
       '- Jede STL einzeln oder mehrere zusammen auf die Platte legen.',
       '- Schichthöhe 0,2 mm, keine Stützen nötig.',
       '',
       'Zusammensetzen: Die Puzzle-Verbinder an den Kanten ineinander drücken.',
+      s.tabMM ? 'Die Laschen am Außenrand sind zum Festkleben mit Malerkrepp gedacht.' : '',
     ];
     for (const t of tiles.tiles) lines.push(`${tileName(t)}: ${fmt(t.widthMM, 1)} x ${fmt(t.heightMM, 1)} mm`);
     return lines.join('\r\n');

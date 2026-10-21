@@ -10,7 +10,7 @@ for (let y = 0; y < ih; y++) for (let x = 0; x < iw; x++) {
   if (Math.random() < 0.01) g[y * iw + x] = 0;
 }
 let t = Date.now();
-const st = S.buildStencil(g, iw, ih, { px: p, threshold: 128, invert: false, markerMM: 3, minStegMM: 2, bridgeMM: 2, borderMM: 10, widenThin: true, smoothMM: 0, cornerMM: 1 });
+const st = S.buildStencil(g, iw, ih, { px: p, threshold: 128, invert: false, markerMM: 3, minStegMM: 2, bridgeMM: 2, borderMM: 10, tabMM: 12, widenThin: true, smoothMM: 0, cornerMM: 1 });
 console.log('stencil', st.W, st.H, 'bridged', st.bridged, Date.now() - t, 'ms');
 const { label } = S._internal;
 console.log('components', label(st.mat, st.W, st.H).n);
