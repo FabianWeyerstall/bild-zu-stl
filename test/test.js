@@ -10,12 +10,12 @@ for (let y = 0; y < ih; y++) for (let x = 0; x < iw; x++) {
   if (Math.random() < 0.01) g[y * iw + x] = 0;
 }
 let t = Date.now();
-const st = S.buildStencil(g, iw, ih, { px: p, threshold: 128, invert: false, markerMM: 3, minStegMM: 2, bridgeMM: 2, borderMM: 10, widenThin: true, smoothMM: 0 });
+const st = S.buildStencil(g, iw, ih, { px: p, threshold: 128, invert: false, markerMM: 3, minStegMM: 2, bridgeMM: 2, borderMM: 10, widenThin: true, smoothMM: 0, cornerMM: 1 });
 console.log('stencil', st.W, st.H, 'bridged', st.bridged, Date.now() - t, 'ms');
 const { label } = S._internal;
 console.log('components', label(st.mat, st.W, st.H).n);
 t = Date.now();
-const tl = S.makeTiles(st, { maxTileMM: 240, clearanceMM: 0.2, knobR: 3.5, neckW: 3.5, neckL: 2, knobSpacing: 40, bridgeMM: 2 });
+const tl = S.makeTiles(st, { maxTileMM: 240, clearanceMM: 0.2, knobR: 3.5, neckW: 3.5, neckL: 2, knobSpacing: 40, bridgeMM: 2, markerMM: 3, minStegMM: 2, cornerMM: 1 });
 console.log('tiles', tl.nx, tl.ny, 'knobs', tl.knobs.length, Date.now() - t, 'ms');
 let bad = 0;
 for (const tile of tl.tiles) {

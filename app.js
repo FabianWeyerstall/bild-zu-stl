@@ -7,7 +7,7 @@
     width: $('width'), height: $('height'), border: $('border'), sizeInfo: $('sizeInfo'),
     thin: $('thin'), threshold: $('threshold'), thresholdOut: $('thresholdOut'),
     invert: $('invert'), smooth: $('smooth'),
-    minSteg: $('minSteg'), bridge: $('bridge'), maxTile: $('maxTile'), clearance: $('clearance'),
+    minSteg: $('minSteg'), corner: $('corner'), bridge: $('bridge'), maxTile: $('maxTile'), clearance: $('clearance'),
     exportBtn: $('export'), status: $('status'), info: $('info'),
     overlay: $('overlay'), canvas: $('canvas'), empty: $('empty'),
   };
@@ -42,6 +42,7 @@
       smoothMM: Math.max(0, num(ui.smooth, 0.3)),
       minStegMM: Math.max(0.8, num(ui.minSteg, 2)),
       bridgeMM: Math.max(0.8, num(ui.bridge, 2)),
+      cornerMM: Math.max(0, num(ui.corner, 1)),
       maxTileMM: Math.min(256, Math.max(60, num(ui.maxTile, 240))),
       clearanceMM: Math.max(0.05, num(ui.clearance, 0.2)),
     };
@@ -132,7 +133,7 @@
       const t0 = performance.now();
       const { gray, iw, ih } = rasterize(s);
       const st = Stencil.buildStencil(gray, iw, ih, s);
-      const tiles = Stencil.makeTiles(st, { maxTileMM: s.maxTileMM, clearanceMM: s.clearanceMM, bridgeMM: s.bridgeMM, ...KNOB });
+      const tiles = Stencil.makeTiles(st, { ...s, ...KNOB });
       result = { st, tiles, s };
       render();
       describe(performance.now() - t0);

@@ -89,6 +89,30 @@
     return dilate(erode(A, W, H, r), W, H, r);
   }
 
+  // Füllt Lücken und Einbuchtungen, die schmaler als 2r Pixel sind (rundet Innenecken).
+  function closing(A, W, H, r) {
+    if (r <= 0.5) return A.slice();
+    return erode(dilate(A, W, H, r), W, H, r);
+  }
+
+  // Rundet Ecken mit Radius r ab, ohne Öffnungen schmaler als den Marker zu machen.
+  // Schließen rundet die Ecken der Öffnungen (z. B. wo ein Steg auf eine Linie trifft),
+  // Öffnen rundet spitze Ecken des Materials.
+  function roundCorners(mat, W, H, opts, allowed) {
+    const p = opts.px;
+    const r = (opts.cornerMM || 0) / p;
+    if (r <= 0.5) return mat;
+    const rHole = Math.min(r, (0.45 * opts.markerMM) / p);
+    const rMat = Math.min(r, (0.45 * Math.min(opts.minStegMM, opts.bridgeMM)) / p);
+    let m = closing(mat, W, H, rHole);
+    if (!allowed) m = opening(m, W, H, rMat);
+    for (let i = 0; i < W * H; i++) {
+      if (allowed && !allowed[i]) m[i] = 0;
+      mat[i] = m[i];
+    }
+    return mat;
+  }
+
   // ---------------------------------------------------------------------------
   // Zusammenhangskomponenten (4er-Nachbarschaft)
   // ---------------------------------------------------------------------------
@@ -307,7 +331,10 @@
     // 3) Inseln mit Haltestegen anbinden
     const { bridgeMask, bridged } = addBridges(mat, W, H, opts.bridgeMM / p / 2);
 
-    // 4) Diagonale Berührungen schließen
+    // 4) Ecken abrunden, damit der Marker nirgends hängen bleibt
+    roundCorners(mat, W, H, opts);
+
+    // 5) Diagonale Berührungen schließen
     fixDiagonals(mat, W, H, true);
 
     return { W, H, px: p, border: b, mat, holes0, bridgeMask, bridged };
@@ -528,6 +555,7 @@
           }
         }
         st.bridged += tb.bridged;
+        if (tb.bridged) roundCorners(m, w, h, { ...opts, px: p }, allowed);
         fixDiagonals(m, w, h, false);
         const { lab, n, sizes } = label(m, w, h);
         let pieces = 0;
