@@ -490,14 +490,31 @@
         else any = true;
       }
       if (any) {
-        const wide = dilate(thin, W, H, r);
+        // Um die Mittellinie verbreitern, nicht um den ganzen Linienrand: Sonst würde eine knapp zu
+        // schmale Linie fast doppelt so breit, und Reste an nur einer Kante schieben die Linie zur Seite.
+        // Mittellinie = Pixel, die mindestens so weit vom Rand entfernt sind wie ihre Nachbarn.
+        const D0 = sqDist(holes0, W, H, 0);
+        const seed = new Uint8Array(W * H);
+        for (let y = 1; y < H - 1; y++) {
+          for (let x = 1; x < W - 1; x++) {
+            const i = y * W + x;
+            if (!thin[i]) continue;
+            const d = D0[i];
+            if (d >= D0[i - 1] && d >= D0[i + 1] && d >= D0[i - W] && d >= D0[i + W] &&
+                d >= D0[i - W - 1] && d >= D0[i - W + 1] && d >= D0[i + W - 1] && d >= D0[i + W + 1]) seed[i] = 1;
+          }
+        }
+        // ein Pixel Reserve, damit die verbreiterte Linie das Öffnen unten sicher übersteht
+        const wide = dilate(seed, W, H, r + 1);
         for (let i = 0; i < W * H; i++) if (wide[i] && inner[i]) holes[i] = 1;
         // Übergang glätten: Wo eine verbreiterte Linie in eine breite Fläche übergeht (z. B. Linie in
         // eine gefüllte Ohrspitze), wächst die Fläche dort mit und läuft über 6 Markerradien sanft aus.
         // Sonst bliebe an der Übergangsstelle eine Stufe. Nur Flächen, die mit der Linie verbunden sind.
         const taper = 6 * r;
         const { lab: lab0 } = label(holes0, W, H);
-        const near = featureTransform(thin, W, H), hole = featureTransform(holes0, W, H);
+        // Nur echte Flächen (deutlich breiter als der Marker) wachsen mit, keine knapp breiten Linien.
+        const bulk = opening(holes0, W, H, 2 * r);
+        const near = featureTransform(seed, W, H), hole = featureTransform(bulk, W, H);
         for (let i = 0; i < W * H; i++) {
           if (holes[i] || !inner[i]) continue;
           const t = Math.sqrt(near.D[i]);
@@ -650,8 +667,13 @@
       }
     }
 
-    const R = opts.knobR / p, NW = opts.neckW / p / 2, NL = opts.neckL / p;
-    const reach = NL + 2 * R;
+    let R = opts.knobR / p, NW = opts.neckW / p / 2, NL = opts.neckL / p;
+    let reach = NL + 2 * R;
+    // Kleinere Verbinder als Rückfall für Nähte, an denen die normale Größe nirgends Platz findet
+    const scaleKnob = (f) => {
+      R = (f * opts.knobR) / p; NW = (f * opts.neckW) / p / 2; NL = (f * opts.neckL) / p;
+      reach = NL + 2 * R;
+    };
     const margin = 1.0 / p;
     const edgeKeep = R + 3 / p;
     const spacing = opts.knobSpacing / p;
@@ -717,7 +739,11 @@
           const half = (y1 - y0) / n / 2;
           if (placeKnob(true, cutX[c], pos, half, k % 2 === 0 ? 1 : -1, (dir) => r * nx + (dir > 0 ? c - 1 : c))) k++;
         }
-        if (!k) bareSeams++;
+        if (!k) {
+          scaleKnob(0.7);
+          if (!placeKnob(true, cutX[c], (y0 + y1) / 2, (y1 - y0) / 2, 1, (dir) => r * nx + (dir > 0 ? c - 1 : c))) bareSeams++;
+          scaleKnob(1);
+        }
       }
     }
     for (let r = 1; r < ny; r++) {
@@ -731,7 +757,11 @@
           const half = (x1 - x0) / n / 2;
           if (placeKnob(false, cutY[r], pos, half, k % 2 === 0 ? 1 : -1, (dir) => (dir > 0 ? r - 1 : r) * nx + c)) k++;
         }
-        if (!k) bareSeams++;
+        if (!k) {
+          scaleKnob(0.7);
+          if (!placeKnob(false, cutY[r], (x0 + x1) / 2, (x1 - x0) / 2, 1, (dir) => (dir > 0 ? r - 1 : r) * nx + c)) bareSeams++;
+          scaleKnob(1);
+        }
       }
     }
 
