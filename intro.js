@@ -13,6 +13,13 @@
   dlg.addEventListener('cancel', () => { try { localStorage.setItem(STORE, '1'); } catch (e) { /* egal */ } });
   // Klick auf den abgedunkelten Hintergrund schließt ebenfalls
   dlg.addEventListener('click', (e) => { if (e.target === dlg) close(); });
+  // Pfeile der Schritt-Bilder blättern um eine Karte weiter
+  dlg.querySelectorAll('.steps').forEach((box) => {
+    const track = box.querySelector('.stepTrack');
+    const step = () => (track.querySelector('figure') || {}).offsetWidth + 12 || track.clientWidth;
+    box.querySelector('.prev').addEventListener('click', () => track.scrollBy({ left: -step(), behavior: 'smooth' }));
+    box.querySelector('.next').addEventListener('click', () => track.scrollBy({ left: step(), behavior: 'smooth' }));
+  });
   let seen = false;
   try { seen = localStorage.getItem(STORE) === '1'; } catch (e) { /* egal */ }
   if (!seen) dlg.showModal();

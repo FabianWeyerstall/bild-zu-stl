@@ -195,3 +195,14 @@ html[lang="en"] [data-only="de"], html:not([lang="en"]) [data-only="en"] { displ
 .exGrid button img { width: 100%; height: auto; display: block; border-radius: 3px; }
 .exGrid button:hover { border-color: var(--accent); }
 .exGrid button.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+
+/* Schritt-Bilder im Intro */
+#intro { max-width: 760px; }
+.steps { position: relative; margin: 4px -4px 0; }
+.stepTrack { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px 4px 8px; scrollbar-width: thin; }
+.stepTrack figure { flex: 0 0 82%; margin: 0; scroll-snap-align: start; }
+.stepTrack img { width: 100%; height: auto; display: block; border-radius: 10px; border: 1px solid var(--line); }
+.stepTrack figcaption { font-size: 0.88rem; margin-top: 6px; line-height: 1.4; }
+.stepNav { position: absolute; top: calc(50% - 40px); width: 36px; height: 36px; padding: 0; border-radius: 50%; border: none; background: rgba(0,0,0,.55); color: #fff; font-size: 1.4rem; line-height: 1; cursor: pointer; }
+.stepNav.prev { left: 6px; } .stepNav.next { right: 6px; }
+.stepNav:hover { background: rgba(0,0,0,.75); }

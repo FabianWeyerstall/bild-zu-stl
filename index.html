@@ -7,11 +7,11 @@
   <meta name="application-name" content="Stencilio Print">
   <meta name="apple-mobile-web-app-title" content="Stencilio Print">
   <meta name="description" content="Erzeugt aus einem Bild eine 3D-druckbare Schablone (STL) zum Nachmalen mit Kreidemarkern auf Glas und Wänden.">
-  <link rel="icon" href="favicon.ico?v=28" sizes="any">
-  <link rel="icon" href="favicon-32.png?v=28" type="image/png" sizes="32x32">
-  <link rel="icon" href="favicon.svg?v=28" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=28">
-  <link rel="stylesheet" href="style.css?v=28">
+  <link rel="icon" href="favicon.ico?v=29" sizes="any">
+  <link rel="icon" href="favicon-32.png?v=29" type="image/png" sizes="32x32">
+  <link rel="icon" href="favicon.svg?v=29" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=29">
+  <link rel="stylesheet" href="style.css?v=29">
 </head>
 <body>
   <header>
@@ -188,6 +188,17 @@
     <div data-only="de">
       <h2 id="introTitle">Willkommen bei Stencilio Print</h2>
       <p class="lead">Aus einem Bild wird eine flache Schablone für den 3D-Drucker. Du klebst sie ans Fenster und malst mit einem Kreidemarker durch die Öffnungen. Fertig ist die Fensterdeko.</p>
+      <h3>In 5 Schritten zum Fensterbild</h3>
+      <div class="steps">
+        <div class="stepTrack">
+          <figure><img src="intro/schritt-1-app.webp" alt="" width="900" height="600" loading="lazy"><figcaption><b>1. Vorlage erstellen</b> Bild wählen, Stift und Größe einstellen und die 3MF-Datei exportieren.</figcaption></figure>
+          <figure><img src="intro/schritt-2-drucken.webp" alt="" width="900" height="600" loading="lazy"><figcaption><b>2. Drucken</b> In Bambu Studio „Alle Platten slicen“ und drucken. 0,4 mm Dicke reichen.</figcaption></figure>
+          <figure><img src="intro/schritt-3-ankleben.webp" alt="" width="900" height="600" loading="lazy"><figcaption><b>3. Ans Fenster legen</b> Schablone auf die Scheibe legen und glatt andrücken. Tipp: Auf der glatten PEI-Platte (Smooth Plate) gedruckt, haftet die glatte Unterseite meist ganz ohne Klebeband am Glas. Sonst hilft etwas Malerkrepp.</figcaption></figure>
+          <figure><img src="intro/schritt-4-ausmalen.webp" alt="" width="900" height="600" loading="lazy"><figcaption><b>4. Ausmalen</b> Mit dem Kreidemarker durch die Öffnungen malen, kurz trocknen lassen und die Schablone vorsichtig abziehen.</figcaption></figure>
+          <figure><img src="intro/schritt-5-fertig.webp" alt="" width="900" height="600" loading="lazy"><figcaption><b>5. Genießen</b> Fertig ist das Fensterbild. Kreidemarker lässt sich später feucht abwischen, und die Schablone kannst du immer wieder verwenden.</figcaption></figure>
+        </div>
+        <button type="button" class="stepNav prev" aria-label="zurück">‹</button><button type="button" class="stepNav next" aria-label="weiter">›</button>
+      </div>
       <h3>Was du damit machen kannst</h3>
       <ul>
         <li>Fensterbilder für Halloween, Weihnachten, Ostern oder den Geburtstag</li>
@@ -216,6 +227,17 @@
     <div data-only="en">
       <h2>Welcome to Stencilio Print</h2>
       <p class="lead">Turn an image into a flat stencil for your 3D printer. Tape it to the window and trace through the openings with a chalk marker. Instant window decoration.</p>
+      <h3>Window art in 5 steps</h3>
+      <div class="steps">
+        <div class="stepTrack">
+          <figure><img src="intro/schritt-1-app.webp" alt="" width="900" height="600" loading="lazy"><figcaption><b>1. Create the template</b> Choose an image, set marker and size, and export the 3MF file.</figcaption></figure>
+          <figure><img src="intro/schritt-2-drucken.webp" alt="" width="900" height="600" loading="lazy"><figcaption><b>2. Print</b> In Bambu Studio choose “Slice all plates” and print. 0.4 mm thickness is enough.</figcaption></figure>
+          <figure><img src="intro/schritt-3-ankleben.webp" alt="" width="900" height="600" loading="lazy"><figcaption><b>3. Place it on the window</b> Lay the stencil on the glass and press it flat. Tip: printed on the smooth PEI plate, the smooth underside usually clings to glass without any tape. Otherwise a little painter’s tape helps.</figcaption></figure>
+          <figure><img src="intro/schritt-4-ausmalen.webp" alt="" width="900" height="600" loading="lazy"><figcaption><b>4. Paint</b> Trace through the openings with the chalk marker, let it dry briefly and peel the stencil off carefully.</figcaption></figure>
+          <figure><img src="intro/schritt-5-fertig.webp" alt="" width="900" height="600" loading="lazy"><figcaption><b>5. Enjoy</b> Your window art is done. Chalk marker wipes off with a damp cloth later, and the stencil can be used again and again.</figcaption></figure>
+        </div>
+        <button type="button" class="stepNav prev" aria-label="zurück">‹</button><button type="button" class="stepNav next" aria-label="weiter">›</button>
+      </div>
       <h3>What you can make</h3>
       <ul>
         <li>Window art for Halloween, Christmas, Easter or birthdays</li>
@@ -243,16 +265,16 @@
     </div>
   </dialog>
 
-  <script src="vendor/earcut.min.js?v=28"></script>
-  <script src="vendor/jszip.min.js?v=28"></script>
-  <script src="stencil.js?v=28"></script>
-  <script src="vendor/bambu-project-settings.js?v=28"></script>
-  <script src="vendor/bambu-project-settings-a1.js?v=28"></script>
-  <script src="vendor/bambu-project-settings-a1mini.js?v=28"></script>
-  <script src="vendor/bambu-project-settings-h2d.js?v=28"></script>
-  <script src="threemf.js?v=28"></script>
-  <script src="i18n.js?v=28"></script>
-  <script src="intro.js?v=28"></script>
-  <script src="app.js?v=28"></script>
+  <script src="vendor/earcut.min.js?v=29"></script>
+  <script src="vendor/jszip.min.js?v=29"></script>
+  <script src="stencil.js?v=29"></script>
+  <script src="vendor/bambu-project-settings.js?v=29"></script>
+  <script src="vendor/bambu-project-settings-a1.js?v=29"></script>
+  <script src="vendor/bambu-project-settings-a1mini.js?v=29"></script>
+  <script src="vendor/bambu-project-settings-h2d.js?v=29"></script>
+  <script src="threemf.js?v=29"></script>
+  <script src="i18n.js?v=29"></script>
+  <script src="intro.js?v=29"></script>
+  <script src="app.js?v=29"></script>
 </body>
 </html>
