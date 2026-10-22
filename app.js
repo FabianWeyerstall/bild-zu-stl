@@ -690,7 +690,7 @@
 
   function instructions(tiles, st, s) {
     const lines = I18N.lang === 'en' ? [
-      'Image to STL - stencil',
+      'Stencilio Print - stencil',
       '',
       `Total size: ${fmt(st.W * st.px)} x ${fmt(st.H * st.px)} mm, thickness ${fmt(s.thickness, 1)} mm, marker ${fmt(s.markerMM)} mm`,
       `Tiles: ${tiles.ny} rows x ${tiles.nx} columns. R = row (from the top), C = column (from the left).`,
@@ -704,7 +704,7 @@
       'Assembly: press the puzzle connectors at the edges together.',
       s.tabMM ? 'The tabs on the outer edge are meant for taping with painter\'s tape.' : '',
     ] : [
-      'Bild zu STL - Schablone',
+      'Stencilio Print - Schablone',
       '',
       `Gesamtgröße: ${fmt(st.W * st.px)} x ${fmt(st.H * st.px)} mm, Dicke ${fmt(s.thickness, 1)} mm, Marker ${fmt(s.markerMM)} mm`,
       `Kacheln: ${tiles.ny} Reihen x ${tiles.nx} Spalten. R = Reihe (von oben), S = Spalte (von links).`,

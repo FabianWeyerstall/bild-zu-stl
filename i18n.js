@@ -4,7 +4,6 @@
 (function () {
   const STORE = 'bild-zu-stl:sprache';
   const EN = {
-    'Bild zu STL': 'Image to STL',
     'Schablonen zum Nachmalen mit Kreidemarker, für Fenster und Wände. Alles läuft in deinem Browser, nichts wird hochgeladen.':
       'Stencils for tracing with chalk markers on windows and walls. Everything runs in your browser, nothing is uploaded.',
     '1. Bild': '1. Image',
@@ -110,7 +109,7 @@
       }
       for (const a in o) el.setAttribute(a, swap(o[a]));
     }
-    document.title = lang === 'en' ? EN['Bild zu STL'] : 'Bild zu STL';
+    document.title = 'Stencilio Print';
     document.querySelectorAll('.lang button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
   }
 

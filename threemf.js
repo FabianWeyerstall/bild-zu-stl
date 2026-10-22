@@ -91,7 +91,7 @@
       ` <metadata name="Application">BambuStudio-${esc(version)}</metadata>\n` +
       ' <metadata name="BambuStudio:3mfVersion">1</metadata>\n' +
       ` <metadata name="Title">${esc(title || 'Schablone')}</metadata>\n` +
-      ' <metadata name="Designer">Bild zu STL</metadata>\n' +
+      ' <metadata name="Designer">Stencilio Print</metadata>\n' +
       ` <resources>\n${objects.join('\n')}\n </resources>\n` +
       ` <build>\n${items.join('\n')}\n </build>\n` +
       '</model>\n';

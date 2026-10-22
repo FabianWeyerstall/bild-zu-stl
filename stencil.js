@@ -1,5 +1,5 @@
 /*
- * Bild zu STL: Kernlogik (läuft im Browser und in Node).
+ * Stencilio Print: Kernlogik (läuft im Browser und in Node).
  *
  * Masken sind Uint8Array der Größe W*H (Zeile für Zeile, y nach unten).
  * 1 = Material (Kunststoff), 0 = Öffnung (dort wird mit dem Marker gemalt).
@@ -1165,7 +1165,7 @@
     const n = tris.length / 9;
     const buf = new ArrayBuffer(84 + n * 50);
     const dv = new DataView(buf);
-    const header = ('Bild zu STL - ' + (name || 'schablone')).slice(0, 80);
+    const header = ('Stencilio Print - ' + (name || 'schablone')).slice(0, 80);
     for (let i = 0; i < header.length; i++) dv.setUint8(i, header.charCodeAt(i) & 0x7f);
     dv.setUint32(80, n, true);
     let o = 84;
