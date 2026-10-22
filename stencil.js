@@ -316,10 +316,12 @@
     return finishStencil(prepareStencil(gray, iw, ih, opts), opts, edits);
   }
 
-  // Verschmälert Linien, die breiter als 'width' Pixel sind, auf etwa 'width' um ihre
-  // Mittellinie. R(x) = Radius des größten Kreises in der Öffnung, der x enthält (stufenweise
-  // über Öffnungen bestimmt). Die häufigste Linienstärke im Bild gilt als „Linie“; deutlich
-  // dickere Formen (ausgemalte Flächen, Fledermäuse, Gesichter) bleiben unverändert.
+  // Verschmälert Linien auf etwa 'width' Pixel, indem ihre Ränder von beiden Seiten
+  // gleichmäßig abgetragen werden (Erosion). Die häufigste Linienstärke im Bild gilt als
+  // „Linie“ und bestimmt, wie viel abgetragen wird; überall gleich viel, damit Linien gleichmäßig
+  // bleiben und Ecken spitz. R(x) = Radius des größten Kreises in der Öffnung, der x enthält.
+  // Schmalere Linien werden entsprechend weniger abgetragen, deutlich dickere Formen
+  // (ausgemalte Flächen, Gesichter) gar nicht.
   function slimLines(holes, W, H, width, maxR, step) {
     const N = W * H;
     const half = width / 2;
@@ -363,64 +365,15 @@
     let lineR = 0, best = 0;
     for (const [r, n] of hist) if (n > best) { best = n; lineR = r; }
     if (!lineR) return;
-    const areaR = lineR * 1.4 + step;
-    // Mittellinie: Linienpixel zu einem 1 Pixel breiten Skelett ausdünnen (Zhang-Suen),
-    // danach kurze Seitenäste (Ecken, Kantenrauschen) entfernen.
-    const axis = new Uint8Array(N);
-    let list = [];
-    for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
-      const i = y * W + x;
-      if (holes[i] && R[i] < areaR) { axis[i] = 1; list.push(i); }
-    }
-    const nb = (i) => [axis[i - W], axis[i - W + 1], axis[i + 1], axis[i + W + 1], axis[i + W], axis[i + W - 1], axis[i - 1], axis[i - W - 1]];
-    for (let changed = true; changed;) {
-      changed = false;
-      for (let pass = 0; pass < 2; pass++) {
-        const del = [];
-        for (const i of list) {
-          if (!axis[i]) continue;
-          const q = nb(i);
-          let B = 0, A = 0;
-          for (let j = 0; j < 8; j++) { B += q[j]; if (!q[j] && q[(j + 1) % 8]) A++; }
-          if (B < 2 || B > 6 || A !== 1) continue;
-          if (pass === 0 ? (q[0] && q[2] && q[4]) || (q[2] && q[4] && q[6]) : (q[0] && q[2] && q[6]) || (q[0] && q[4] && q[6])) continue;
-          del.push(i);
-        }
-        for (const i of del) axis[i] = 0;
-        if (del.length) changed = true;
-      }
-      list = list.filter((i) => axis[i]);
-    }
-    const OFF = [-W, -W + 1, 1, W + 1, W, W - 1, -1, -W - 1];
-    // Zweige zählen über die Zahl der Übergänge rundherum (robust gegen Treppenstufen)
-    const branches = (i) => { let c = 0; for (let j = 0; j < 8; j++) if (!axis[i + OFF[j]] && axis[i + OFF[(j + 1) % 8]]) c++; return c; };
-    const maxSpur = 1.5 * lineR;
-    const ends = list.filter((i) => axis[i] && branches(i) === 1);
-    const cut = [];
-    for (const i0 of ends) {
-      const chain = [i0];
-      const seen = new Set(chain);
-      let cur = i0, ok = false;
-      while (chain.length <= maxSpur) {
-        let next = -1;
-        for (const o of OFF) { const j = cur + o; if (axis[j] && !seen.has(j)) { next = j; break; } }
-        if (next < 0) break;
-        if (branches(next) >= 3) { ok = true; break; } // Abzweig erreicht: kurzer Seitenast
-        cur = next; chain.push(cur); seen.add(cur);
-        // Nachbarn des vorigen Pixels nicht erneut nehmen
-        for (const o of OFF) if (axis[chain[chain.length - 2] + o]) seen.add(chain[chain.length - 2] + o);
-        seen.delete(cur);
-        seen.add(cur);
-      }
-      if (ok) cut.push(...chain);
-    }
-    for (const j of cut) axis[j] = 0;
-    for (let i = 0; i < N; i++) if (axis[i] && R[i] === 0) axis[i] = 0;
-
-    // Linien werden überall gleich breit: genau die Pixel im Abstand half um die Mittellinie
-    const near = dilate(axis, W, H, half);
+    // Abzweigungen sind etwas dicker als die Linie selbst, erst ab knapp doppelter Stärke gilt es als Fläche
+    const areaR = lineR * 1.8 + step;
+    const delta = lineR - half;
+    if (delta <= 0) return;
     for (let i = 0; i < N; i++) {
-      if (holes[i] && R[i] && R[i] < areaR && !near[i]) holes[i] = 0;
+      if (!holes[i] || !R[i] || R[i] >= areaR) continue;
+      // nie unter die Zielbreite: dünnere Linien werden nur so weit beschnitten, wie sie breiter sind
+      const cut = Math.min(delta, R[i] - half);
+      if (cut > 0 && Math.sqrt(D[i]) <= cut) holes[i] = 0;
     }
   }
 
