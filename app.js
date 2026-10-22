@@ -412,9 +412,27 @@
   if (num(ui.maxTile, 240) > tileLimit()) ui.maxTile.value = tileLimit();
   syncHeight();
   storable().forEach((el) => { el.addEventListener('change', saveSettings); el.addEventListener('input', saveSettings); });
+  // Zurücksetzen: Standardwerte aus dem HTML übernehmen, das geladene Bild bleibt
   $('resetSettings').addEventListener('click', () => {
     try { localStorage.removeItem(STORE); } catch (e) { /* egal */ }
-    location.reload();
+    const changed = [];
+    for (const el of storable()) {
+      if (el.type === 'checkbox' || el.type === 'radio') {
+        if (el.checked !== el.defaultChecked) { el.checked = el.defaultChecked; changed.push(el); }
+      } else if (el.tagName === 'SELECT') {
+        const i = Math.max(0, [...el.options].findIndex((o) => o.defaultSelected));
+        if (el.selectedIndex !== i) { el.selectedIndex = i; changed.push(el); }
+      } else if (el.value !== el.defaultValue) { el.value = el.defaultValue; changed.push(el); }
+    }
+    ui.thresholdOut.textContent = ui.threshold.value;
+    for (const el of changed) {
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    syncThinHint();
+    if (image) { syncHeight(); scheduleDetail(); schedule(); }
+    saveSettings();
+    setStatus(tr('Einstellungen zurückgesetzt.', 'Settings reset.'));
   });
   syncPlates();
   const syncThinHint = () => { $('thinHint').hidden = radio('thick') > 0.25; };
