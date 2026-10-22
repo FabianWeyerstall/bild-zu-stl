@@ -25,7 +25,11 @@
   let timer = null;
   let running = false;
   let pending = false;
-  let base = null, baseKey = '';
+  let baseKey = ''; // Grundeinstellungen, mit denen der Rechner zuletzt vorbereitet wurde
+  // Rechnen im Hintergrund: ein Worker für Vorschau und Export, einer für die Malbarkeit
+  const WORKER_URL = 'jobs.js' + ((document.querySelector('script[src^="app.js"]') || {}).src || '').replace(/^[^?]*/, '');
+  const calc = StencilJobs.runner(WORKER_URL);
+  const calcLoss = StencilJobs.runner(WORKER_URL);
   // Änderungen an Stegen, relativ zur Bildfläche (0..1), damit sie Größenänderungen überstehen
   let edits = { removed: [], added: [] };
 
@@ -99,7 +103,7 @@
       dropLabel = () => `${originalName} (${W} × ${H} px)`;
     }
     ui.dropText.textContent = dropLabel();
-    base = null;
+    baseKey = '';
     analysis = new Map();
     lossCache = new Map();
     edits = { removed: [], added: [] };
@@ -285,7 +289,9 @@
     const w = Math.round(width);
     if (!lossCache.has(w)) {
       const a = analysisImage(w, s);
-      lossCache.set(w, Stencil.paintLoss(a.gray, a.w, a.h, { ...s, px: w / a.w }));
+      const job = calcLoss('loss', { gray: a.gray, w: a.w, h: a.h, s: { ...s, px: w / a.w } });
+      job.catch(() => lossCache.delete(w));
+      lossCache.set(w, job);
     }
     return lossCache.get(w);
   }
@@ -305,8 +311,9 @@
     const marker = tr(`den ${fmt(s.markerMM)}-mm-Marker`, `the ${fmt(s.markerMM)} mm marker`);
     const el = $('detailInfo');
     const cur = num(ui.width, 400);
-    const show = (minW) => {
-      const l = lossAt(cur);
+    const show = async (minW) => {
+      const l = await lossAt(cur);
+      if (gen !== detailGen) return;
       el.hidden = false;
       el.classList.toggle('bad', l > LOSS_BAD);
       el.classList.toggle('warn', l > LOSS_WARN && l <= LOSS_BAD);
@@ -315,12 +322,13 @@
       else el.textContent = tr(`Gut malbar: ${Math.round(100 - l * 100)} % des Bildes bleiben erhalten.`, `Easy to paint: ${Math.round(100 - l * 100)} % of the image is kept.`);
     };
     // 1) aktuelle Breite bewerten
-    show(0);
+    await show(0);
     await pause();
     if (gen !== detailGen) return;
     // 2) Plattenstufen prüfen und zu kleine sperren
     for (const b of document.querySelectorAll('#fitButtons button')) {
-      const l = lossAt(+b.dataset.w);
+      const l = await lossAt(+b.dataset.w);
+      if (gen !== detailGen) return;
       b.classList.toggle('bad', l > LOSS_BAD);
       b.classList.toggle('warn', l > LOSS_WARN && l <= LOSS_BAD);
       b.disabled = l > LOSS_BAD;
@@ -331,15 +339,16 @@
     }
     // 3) kleinste noch malbare Breite suchen (Verlust höchstens 50 %), auf etwa 3 % genau
     let lo = 30, hi = 3000;
-    if (lossAt(hi) > LOSS_BAD) lo = hi;
+    if ((await lossAt(hi)) > LOSS_BAD) lo = hi;
     while (hi / lo > 1.03) {
       const mid = Math.round(Math.sqrt(lo * hi));
-      if (lossAt(mid) > LOSS_BAD) lo = mid; else hi = mid;
+      if ((await lossAt(mid)) > LOSS_BAD) lo = mid; else hi = mid;
       await pause();
       if (gen !== detailGen) return;
     }
+    if (gen !== detailGen) return;
     $('widthRange').min = Math.min(hi, cur);
-    show(hi);
+    await show(hi);
   }
 
   ui.threshold.addEventListener('input', () => { ui.thresholdOut.textContent = ui.threshold.value; scheduleDetail(); schedule(); });
@@ -455,13 +464,13 @@
       const s = readSettings();
       const t0 = performance.now();
       const key = JSON.stringify([s.px, s.widthMM, s.heightMM, s.borderMM, s.tabMM, s.markerMM, s.widenThin, s.slimMM, s.threshold, s.invert, s.smoothMM, s.minStegMM]);
-      if (!base || key !== baseKey) {
-        const { gray, iw, ih } = rasterize(s);
-        base = Stencil.prepareStencil(gray, iw, ih, s);
+      const job = { key, s, edits, knob: KNOB };
+      let res = key === baseKey ? await calc('stencil', job) : null;
+      if (!res) {
+        res = await calc('stencil', { ...job, raster: rasterize(s) });
         baseKey = key;
       }
-      const st = Stencil.finishStencil(base, s, gridEdits(base));
-      const tiles = Stencil.makeTiles(st, { ...s, ...KNOB });
+      const { st, tiles } = res;
       result = { st, tiles, s };
       render();
       describe(performance.now() - t0);
@@ -484,12 +493,6 @@
   function toUnit(g, x, y) {
     const b = g.border;
     return [(x - b) / (g.W - 2 * b), (y - b) / (g.H - 2 * b)];
-  }
-  function gridEdits(g) {
-    return {
-      removed: edits.removed.map(([u, v]) => toGrid(g, u, v)),
-      added: edits.added.map(([u1, v1, u2, v2]) => toGrid(g, u1, v1).concat(toGrid(g, u2, v2))),
-    };
   }
   function eventToGrid(e) {
     const r = ui.canvas.getBoundingClientRect();
@@ -674,7 +677,7 @@
         const t = tiles.tiles[k];
         setStatus(tr(`Erzeuge Kachel ${k + 1} von ${tiles.tiles.length} …`, `Creating tile ${k + 1} of ${tiles.tiles.length} …`));
         await new Promise((r) => setTimeout(r, 15));
-        const tris = Stencil.maskToTriangles(t.mask, t.w, t.h, st.px, s.thickness, 0.7, $('vector').checked, single ? 0 : s.clearanceMM / 2);
+        const tris = await calc('mesh', { mask: t.mask, w: t.w, h: t.h, px: st.px, thickness: s.thickness, smooth: $('vector').checked, shrink: single ? 0 : s.clearanceMM / 2 });
         parts.push({ name: single ? imageName : tileName(t), tris, width: t.widthMM, height: t.heightMM });
       }
       if (as3mf) {

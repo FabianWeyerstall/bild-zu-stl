@@ -33,6 +33,8 @@ Kostenlos, ohne Konto. Alles läuft im Browser, deine Bilder werden nirgendwo ho
 - **Kanten glätten** (Standard an): Die Konturen werden im Netz als glatte Kurven statt als Pixelstufen ausgegeben. Falls eine Kontur dabei nicht sauber schließt, nimmt die App für dieses Teil automatisch die Pixelkontur.
 - **Leerer Rand** ums Motiv wird beim Laden automatisch abgeschnitten (abschaltbar), damit die Druckfläche fürs eigentliche Bild genutzt wird.
 - **Malbarkeit:** Die App schätzt, wie viel vom Bild bei der gewählten Breite durch Markerbreite und Mindeststeg verändert wird. Plattenstufen, bei denen mehr als die Hälfte verloren ginge, sind gesperrt, und die App nennt die kleinste noch malbare Breite.
+- **Rechnen im Hintergrund:** Vorschau, Malbarkeit und Export laufen in Web Workern (`jobs.js`), die Seite bleibt dabei bedienbar.
+- **Puzzle-Spiel** (Standard 0,1 mm) wird im fertigen Netz exakt gesetzt, nicht auf Rasterpixel gerundet: Jede Kachel wird an allen Kanten um die Hälfte des Spiels zurückgesetzt.
 - **Einstellungen** werden im Browser gespeichert und beim nächsten Besuch wiederhergestellt („Einstellungen zurücksetzen“ unter „Erweitert“).
 - **Übersichtlich:** Die Abschnitte links lassen sich per Klick auf die Überschrift einklappen, und die Vorschau bleibt beim Scrollen am Bildschirm stehen.
 - **Deutsch/Englisch:** Oben rechts per Flagge umschalten (Standard Deutsch, die Wahl wird gemerkt). Texte stehen in `i18n.js`, Laufzeittexte in `app.js` über `tr(deutsch, englisch)`.
