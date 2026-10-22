@@ -503,6 +503,7 @@
     const edgeKeep = R + 3 / p;
     const spacing = opts.knobSpacing / p;
     const knobs = [];
+    let bareSeams = 0; // Nähte, an denen kein Verbinder Platz fand
 
     // Knopf an Schnittlinie 'cut' (entlang der Achse), Mittelpunkt 'pos' quer dazu.
     // vertical=true: Schnitt ist eine senkrechte Linie bei x=cut.
@@ -537,6 +538,21 @@
       return true;
     }
 
+    // Liegt an der Wunschstelle eine Linie im Weg, den Knopf innerhalb seines Abschnitts
+    // verschieben und notfalls in die andere Richtung zeigen lassen.
+    function placeKnob(vertical, cut, centre, half, prefDir, srcFor) {
+      const room = Math.max(0, half - R - margin);
+      const step = Math.max(1, 1 / p);
+      for (let off = 0; off <= room; off += step) {
+        for (const o of off ? [off, -off] : [0]) {
+          for (const dir of [prefDir, -prefDir]) {
+            if (tryKnob(vertical, cut, centre + o, dir, srcFor(dir))) return true;
+          }
+        }
+      }
+      return false;
+    }
+
     for (let c = 1; c < nx; c++) {
       for (let r = 0; r < ny; r++) {
         const y0 = cutY[r] + edgeKeep, y1 = cutY[r + 1] - edgeKeep;
@@ -545,10 +561,10 @@
         let k = 0;
         for (let s = 0; s < n; s++) {
           const pos = y0 + ((s + 0.5) * (y1 - y0)) / n;
-          const dir = k % 2 === 0 ? 1 : -1;
-          const src = r * nx + (dir > 0 ? c - 1 : c);
-          if (tryKnob(true, cutX[c], pos, dir, src)) k++;
+          const half = (y1 - y0) / n / 2;
+          if (placeKnob(true, cutX[c], pos, half, k % 2 === 0 ? 1 : -1, (dir) => r * nx + (dir > 0 ? c - 1 : c))) k++;
         }
+        if (!k) bareSeams++;
       }
     }
     for (let r = 1; r < ny; r++) {
@@ -559,10 +575,10 @@
         let k = 0;
         for (let s = 0; s < n; s++) {
           const pos = x0 + ((s + 0.5) * (x1 - x0)) / n;
-          const dir = k % 2 === 0 ? 1 : -1;
-          const src = (dir > 0 ? r - 1 : r) * nx + c;
-          if (tryKnob(false, cutY[r], pos, dir, src)) k++;
+          const half = (x1 - x0) / n / 2;
+          if (placeKnob(false, cutY[r], pos, half, k % 2 === 0 ? 1 : -1, (dir) => (dir > 0 ? r - 1 : r) * nx + c)) k++;
         }
+        if (!k) bareSeams++;
       }
     }
 
@@ -698,7 +714,7 @@
         tiles.push({ row: r, col: c, x0, y0, w, h, mask: m, pieces, labelled, widthMM: w * p, heightMM: h * p });
       }
     }
-    return { nx, ny, cutX, cutY, tiles, knobs, assign, gap };
+    return { nx, ny, cutX, cutY, tiles, knobs, assign, gap, bareSeams };
   }
 
   // ---------------------------------------------------------------------------

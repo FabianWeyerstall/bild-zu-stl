@@ -543,7 +543,7 @@
     const parts = [
       n === 1 ? '1 Teil' : `${n} Kacheln (${tiles.ny} Reihen × ${tiles.nx} Spalten), größte Seite ${fmt(biggest)} mm`,
       `${st.bridged} Haltesteg${st.bridged === 1 ? '' : 'e'}`,
-      n > 1 ? `${tiles.knobs.length} Puzzle-Verbinder` : null,
+      n > 1 ? `${tiles.knobs.length} Puzzle-Verbinder` + (tiles.bareSeams ? ` (${tiles.bareSeams} Naht${tiles.bareSeams === 1 ? '' : 'e'} ohne Verbinder, dort mit Klebeband fixieren)` : '') : null,
       `Raster ${fmt(st.px, 2)} mm`,
     ].filter(Boolean);
     let text = parts.join(' · ');
