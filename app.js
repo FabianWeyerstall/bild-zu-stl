@@ -2,6 +2,8 @@
   'use strict';
 
   const $ = (id) => document.getElementById(id);
+  const tr = I18N.tr;
+  let busyOn = false, lastMs = 0, dropLabel = null;
   const ui = {
     file: $('file'), drop: $('drop'), dropText: $('dropText'),
     width: $('width'), height: $('height'), border: $('border'), sizeInfo: $('sizeInfo'),
@@ -32,7 +34,7 @@
     return Number.isFinite(v) ? v : def;
   };
   const radio = (name) => parseFloat(document.querySelector(`input[name=${name}]:checked`).value);
-  const fmt = (v, d = 0) => v.toLocaleString('de-DE', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const fmt = (v, d = 0) => v.toLocaleString(I18N.lang === 'en' ? 'en-US' : 'de-DE', { minimumFractionDigits: d, maximumFractionDigits: d });
 
   function readSettings() {
     const s = {
@@ -64,7 +66,7 @@
 
   function loadFile(file) {
     if (!file || !file.type.startsWith('image/')) {
-      setStatus('Bitte eine Bilddatei wählen (PNG, JPG, …).');
+      setStatus(tr('Bitte eine Bilddatei wählen (PNG, JPG, …).', 'Please choose an image file (PNG, JPG, …).'));
       return;
     }
     imageName = file.name.replace(/\.[^.]+$/, '').replace(/[^\w\-äöüÄÖÜß]+/g, '_') || 'schablone';
@@ -76,7 +78,7 @@
       ui.empty.style.display = 'none';
       useImage();
     };
-    img.onerror = () => setStatus('Das Bild konnte nicht gelesen werden.');
+    img.onerror = () => setStatus(tr('Das Bild konnte nicht gelesen werden.', 'The image could not be read.'));
     img.src = url;
   }
 
@@ -91,11 +93,12 @@
       c.getContext('2d').drawImage(original, box.x, box.y, box.w, box.h, 0, 0, box.w, box.h);
       c.naturalWidth = box.w; c.naturalHeight = box.h;
       image = c;
-      ui.dropText.textContent = `${originalName} (${W} × ${H} px, Rand abgeschnitten: ${box.w} × ${box.h} px)`;
+      dropLabel = () => `${originalName} (${W} × ${H} px, ${tr('Rand abgeschnitten', 'border cropped')}: ${box.w} × ${box.h} px)`;
     } else {
       image = original;
-      ui.dropText.textContent = `${originalName} (${W} × ${H} px)`;
+      dropLabel = () => `${originalName} (${W} × ${H} px)`;
     }
+    ui.dropText.textContent = dropLabel();
     base = null;
     analysis = new Map();
     lossCache = new Map();
@@ -203,7 +206,7 @@
     range.max = Math.max(1500, Math.ceil(w));
     range.value = w;
     const p = platesFor(w);
-    $('plateInfo').textContent = `${p.nx} × ${p.ny} = ${p.n} Platte${p.n === 1 ? '' : 'n'} · Platten zu ${Math.round(p.use * 100)} % genutzt`;
+    $('plateInfo').textContent = tr(`${p.nx} × ${p.ny} = ${p.n} Platte${p.n === 1 ? '' : 'n'} · Platten zu ${Math.round(p.use * 100)} % genutzt`, `${p.nx} × ${p.ny} = ${p.n} plate${p.n === 1 ? '' : 's'} · plates ${Math.round(p.use * 100)} % used`);
     const spots = sweetSpots();
     $('sweetSpots').innerHTML = spots.map((e) => `<option value="${e.w}"></option>`).join('');
     const box = $('fitButtons');
@@ -211,8 +214,8 @@
     for (const e of spots) {
       const b = document.createElement('button');
       b.type = 'button';
-      b.innerHTML = `<b>${e.n}</b> ${e.n === 1 ? 'Platte' : 'Platten'}: ${e.w} mm`;
-      b.title = `${e.n} ${e.n === 1 ? 'Platte' : 'Platten'} (${e.nx} × ${e.ny}), Breite bis ${e.w} mm`;
+      b.innerHTML = `<b>${e.n}</b> ${e.n === 1 ? tr('Platte', 'plate') : tr('Platten', 'plates')}: ${e.w} mm`;
+      b.title = tr(`${e.n} ${e.n === 1 ? 'Platte' : 'Platten'} (${e.nx} × ${e.ny}), Breite bis ${e.w} mm`, `${e.n} ${e.n === 1 ? 'plate' : 'plates'} (${e.nx} × ${e.ny}), width up to ${e.w} mm`);
       if (e.n === p.n) b.classList.add('active');
       b.dataset.w = e.w;
       b.addEventListener('click', () => { ui.width.value = e.w; syncHeight(); saveSettings(); schedule(0); });
@@ -278,7 +281,7 @@
   async function updateDetail() {
     const gen = detailGen;
     const s = readSettings();
-    const marker = `${fmt(s.markerMM)}-mm-Marker`;
+    const marker = tr(`den ${fmt(s.markerMM)}-mm-Marker`, `the ${fmt(s.markerMM)} mm marker`);
     const el = $('detailInfo');
     const cur = num(ui.width, 400);
     const show = (minW) => {
@@ -286,9 +289,9 @@
       el.hidden = false;
       el.classList.toggle('bad', l > LOSS_BAD);
       el.classList.toggle('warn', l > LOSS_WARN && l <= LOSS_BAD);
-      if (l > LOSS_BAD) el.textContent = `Zu klein für den ${marker}: ${Math.round(l * 100)} % des Bildes werden verändert.` + (minW ? ` Malbar ab etwa ${minW} mm Breite.` : '');
-      else if (l > LOSS_WARN) el.textContent = `Grob: ${Math.round(l * 100)} % des Bildes werden durch Markerbreite und Stege verändert. Feiner wird es mit mehr Breite oder dünnerem Marker.`;
-      else el.textContent = `Gut malbar: ${Math.round(100 - l * 100)} % des Bildes bleiben erhalten.`;
+      if (l > LOSS_BAD) el.textContent = tr(`Zu klein für ${marker}: ${Math.round(l * 100)} % des Bildes werden verändert.`, `Too small for ${marker}: ${Math.round(l * 100)} % of the image changes.`) + (minW ? tr(` Malbar ab etwa ${minW} mm Breite.`, ` Paintable from about ${minW} mm width.`) : '');
+      else if (l > LOSS_WARN) el.textContent = tr(`Grob: ${Math.round(l * 100)} % des Bildes werden durch Markerbreite und Stege verändert. Feiner wird es mit mehr Breite oder dünnerem Marker.`, `Coarse: ${Math.round(l * 100)} % of the image changes because of marker width and webs. More width or a thinner marker gives finer results.`);
+      else el.textContent = tr(`Gut malbar: ${Math.round(100 - l * 100)} % des Bildes bleiben erhalten.`, `Easy to paint: ${Math.round(100 - l * 100)} % of the image is kept.`);
     };
     // 1) aktuelle Breite bewerten
     show(0);
@@ -300,8 +303,8 @@
       b.classList.toggle('bad', l > LOSS_BAD);
       b.classList.toggle('warn', l > LOSS_WARN && l <= LOSS_BAD);
       b.disabled = l > LOSS_BAD;
-      if (l > LOSS_BAD) b.title = `Zu klein für den ${marker}: ${Math.round(l * 100)} % des Bildes würden verändert.`;
-      else if (l > LOSS_WARN) b.title += ` · grob: ${Math.round(l * 100)} % des Bildes werden verändert`;
+      if (l > LOSS_BAD) b.title = tr(`Zu klein für ${marker}: ${Math.round(l * 100)} % des Bildes würden verändert.`, `Too small for ${marker}: ${Math.round(l * 100)} % of the image would change.`);
+      else if (l > LOSS_WARN) b.title += tr(` · grob: ${Math.round(l * 100)} % des Bildes werden verändert`, ` · coarse: ${Math.round(l * 100)} % of the image changes`);
       await pause();
       if (gen !== detailGen) return;
     }
@@ -356,9 +359,9 @@
   const FOLD_STORE = 'bild-zu-stl:eingeklappt';
   let folded = [];
   try { folded = JSON.parse(localStorage.getItem(FOLD_STORE) || '[]'); } catch (e) { folded = []; }
-  document.querySelectorAll('#settings > section:not(.actions) > h2').forEach((h) => {
+  document.querySelectorAll('#settings > section:not(.actions) > h2').forEach((h, idx) => {
     const sec = h.parentElement;
-    const id = h.textContent.trim();
+    const id = 'abschnitt-' + (idx + 1);
     h.classList.add('fold');
     h.tabIndex = 0;
     h.setAttribute('role', 'button');
@@ -390,12 +393,13 @@
   function setStatus(t) { ui.status.textContent = t; }
 
   function setBusy(on, text) {
+    busyOn = on;
     ui.busy.hidden = !on || !image;
     if (text) ui.busyText.textContent = text;
   }
 
   function schedule(delay = 450) {
-    setBusy(true, 'Bild wird angepasst …');
+    setBusy(true, tr('Bild wird angepasst …', 'Adjusting image …'));
     clearTimeout(timer);
     timer = setTimeout(run, delay);
   }
@@ -423,7 +427,7 @@
     if (running) { pending = true; return; }
     running = true;
     ui.exportBtn.disabled = true;
-    setStatus('Berechne Vorschau …');
+    setStatus(tr('Berechne Vorschau …', 'Calculating preview …'));
     await new Promise((r) => setTimeout(r, 30));
     try {
       const s = readSettings();
@@ -442,7 +446,7 @@
       ui.exportBtn.disabled = false;
     } catch (err) {
       console.error(err);
-      setStatus('Fehler bei der Berechnung: ' + err.message);
+      setStatus(tr('Fehler bei der Berechnung: ', 'Calculation error: ') + err.message);
     }
     running = false;
     if (pending) { pending = false; run(); }
@@ -478,7 +482,7 @@
   let dragStart = null;
   ui.canvas.addEventListener('pointerdown', (e) => {
     if (!result) return;
-    if (running) { setStatus('Moment, die Vorschau wird noch berechnet …'); return; }
+    if (running) { setStatus(tr('Moment, die Vorschau wird noch berechnet …', 'One moment, the preview is still being calculated …')); return; }
     e.preventDefault();
     try { ui.canvas.setPointerCapture(e.pointerId); } catch (err) { /* ältere Browser */ }
     dragStart = { grid: eventToGrid(e), x: e.clientX, y: e.clientY };
@@ -501,7 +505,7 @@
     const moved = Math.hypot(e.clientX - start.x, e.clientY - start.y);
     if (moved > 6) {
       edits.added.push(toUnit(st, ...start.grid).concat(toUnit(st, ...end)));
-      setStatus('Steg gesetzt, berechne neu …');
+      setStatus(tr('Steg gesetzt, berechne neu …', 'Bridge added, recalculating …'));
       schedule(0);
       return;
     }
@@ -515,7 +519,7 @@
       if (d < bestD) { bestD = d; best = b; }
     }
     if (!best) {
-      setStatus('Kein Steg an dieser Stelle. Klicke direkt auf einen roten Steg oder ziehe eine Linie für einen neuen.');
+      setStatus(tr('Kein Steg an dieser Stelle. Klicke direkt auf einen roten Steg oder ziehe eine Linie für einen neuen.', 'No bridge here. Click directly on a red bridge or drag a line to add a new one.'));
       return;
     }
     const [ax, ay, bx, by] = best.seg;
@@ -525,7 +529,7 @@
     } else {
       edits.removed.push(toUnit(st, (ax + bx) / 2, (ay + by) / 2));
     }
-    setStatus('Steg verschoben, berechne neu …');
+    setStatus(tr('Steg verschoben, berechne neu …', 'Bridge moved, recalculating …'));
     schedule(0);
   });
   ui.canvas.addEventListener('pointercancel', () => { dragStart = null; ui.drag.innerHTML = ''; });
@@ -535,26 +539,37 @@
   });
 
   function describe(ms) {
+    lastMs = ms;
     const { st, tiles, s } = result;
     const totalW = st.W * st.px, totalH = st.H * st.px;
-    ui.sizeInfo.textContent = `Gesamtgröße mit Rand: ${fmt(totalW)} × ${fmt(totalH)} mm`;
+    ui.sizeInfo.textContent = tr('Gesamtgröße mit Rand', 'Total size with border') + `: ${fmt(totalW)} × ${fmt(totalH)} mm`;
     const n = tiles.tiles.length;
     const biggest = tiles.tiles.reduce((m, t) => Math.max(m, t.widthMM, t.heightMM), 0);
     const loose = tiles.tiles.reduce((m, t) => m + Math.max(0, t.pieces - 1), 0);
     const parts = [
-      n === 1 ? '1 Teil' : `${n} Kacheln (${tiles.ny} Reihen × ${tiles.nx} Spalten), größte Seite ${fmt(biggest)} mm`,
-      `${st.bridged} Haltesteg${st.bridged === 1 ? '' : 'e'}`,
-      n > 1 ? `${tiles.knobs.length} Puzzle-Verbinder` + (tiles.bareSeams ? ` (${tiles.bareSeams} Naht${tiles.bareSeams === 1 ? '' : 'e'} ohne Verbinder, dort mit Klebeband fixieren)` : '') : null,
-      `Raster ${fmt(st.px, 2)} mm`,
+      n === 1 ? tr('1 Teil', '1 part') : tr(`${n} Kacheln (${tiles.ny} Reihen × ${tiles.nx} Spalten), größte Seite ${fmt(biggest)} mm`, `${n} tiles (${tiles.ny} rows × ${tiles.nx} columns), largest side ${fmt(biggest)} mm`),
+      tr(`${st.bridged} Haltesteg${st.bridged === 1 ? '' : 'e'}`, `${st.bridged} holding bridge${st.bridged === 1 ? '' : 's'}`),
+      n > 1 ? tr(`${tiles.knobs.length} Puzzle-Verbinder`, `${tiles.knobs.length} puzzle connector${tiles.knobs.length === 1 ? '' : 's'}`) + (tiles.bareSeams ? tr(` (${tiles.bareSeams} Naht${tiles.bareSeams === 1 ? '' : 'e'} ohne Verbinder, dort mit Klebeband fixieren)`, ` (${tiles.bareSeams} seam${tiles.bareSeams === 1 ? '' : 's'} without connectors, tape them there)`) : '') : null,
+      tr('Raster', 'Grid') + ` ${fmt(st.px, 2)} mm`,
     ].filter(Boolean);
     let text = parts.join(' · ');
-    if (edits.added.length) text += ` · ${edits.added.length} eigene${edits.added.length === 1 ? 'r' : ''} Steg${edits.added.length === 1 ? '' : 'e'}`;
-    if (st.loose) text += ` · Achtung: ${st.loose} Teil${st.loose === 1 ? '' : 'e'} ohne Halt, setze dort einen Steg von Hand`;
+    if (edits.added.length) text += tr(` · ${edits.added.length} eigene${edits.added.length === 1 ? 'r' : ''} Steg${edits.added.length === 1 ? '' : 'e'}`, ` · ${edits.added.length} custom bridge${edits.added.length === 1 ? '' : 's'}`);
+    if (st.loose) text += tr(` · Achtung: ${st.loose} Teil${st.loose === 1 ? '' : 'e'} ohne Halt, setze dort einen Steg von Hand`, ` · Warning: ${st.loose} part${st.loose === 1 ? '' : 's'} without support, add a bridge there by hand`);
     ui.resetEdits.disabled = !edits.added.length && !edits.removed.length;
-    if (loose) text += ` · Hinweis: ${loose} lose${loose === 1 ? 's' : ''} Einzelteil${loose === 1 ? '' : 'e'} an Kachelkanten`;
+    if (loose) text += tr(` · Hinweis: ${loose} lose${loose === 1 ? 's' : ''} Einzelteil${loose === 1 ? '' : 'e'} an Kachelkanten`, ` · Note: ${loose} loose piece${loose === 1 ? '' : 's'} at tile edges`);
     ui.info.textContent = text;
-    setStatus(`Fertig in ${fmt(ms / 1000, 1)} s. Prüfe die Vorschau und exportiere dann.`);
+    setStatus(tr(`Fertig in ${fmt(ms / 1000, 1)} s. Prüfe die Vorschau und exportiere dann.`, `Done in ${fmt(ms / 1000, 1)} s. Check the preview, then export.`));
   }
+
+  // Sprache gewechselt: alle von hier gesetzten Texte neu schreiben
+  I18N.onChange(() => {
+    syncPlates();
+    scheduleDetail();
+    if (dropLabel) ui.dropText.textContent = dropLabel();
+    if (result) { describe(lastMs); render(); }
+    else if (!image) setStatus(tr('Noch kein Bild geladen.', 'No image loaded yet.'));
+    if (busyOn) setBusy(true, tr('Bild wird angepasst …', 'Adjusting image …'));
+  });
 
   // --- Vorschau -----------------------------------------------------------
 
@@ -610,7 +625,7 @@
     }
   }
 
-  const tileName = (t) => `R${t.row + 1}-S${t.col + 1}`;
+  const tileName = (t) => tr(`R${t.row + 1}-S${t.col + 1}`, `R${t.row + 1}-C${t.col + 1}`);
 
   // --- Export -------------------------------------------------------------
 
@@ -628,20 +643,20 @@
     if (!result) return;
     ui.exportBtn.disabled = true;
     const as3mf = $('format').value === '3mf';
-    setBusy(true, as3mf ? '3MF wird erzeugt …' : 'STL-Dateien werden erzeugt …');
+    setBusy(true, as3mf ? tr('3MF wird erzeugt …', 'Creating 3MF …') : tr('STL-Dateien werden erzeugt …', 'Creating STL files …'));
     const { st, tiles, s } = result;
     const single = tiles.tiles.length === 1;
     try {
       const parts = [];
       for (let k = 0; k < tiles.tiles.length; k++) {
         const t = tiles.tiles[k];
-        setStatus(`Erzeuge Kachel ${k + 1} von ${tiles.tiles.length} …`);
+        setStatus(tr(`Erzeuge Kachel ${k + 1} von ${tiles.tiles.length} …`, `Creating tile ${k + 1} of ${tiles.tiles.length} …`));
         await new Promise((r) => setTimeout(r, 15));
         const tris = Stencil.maskToTriangles(t.mask, t.w, t.h, st.px, s.thickness, 0.7, $('vector').checked);
         parts.push({ name: single ? imageName : tileName(t), tris, width: t.widthMM, height: t.heightMM });
       }
       if (as3mf) {
-        setStatus('Packe 3MF …');
+        setStatus(tr('Packe 3MF …', 'Packing 3MF …'));
         const zip = new JSZip();
         const files = ThreeMF.build(parts, imageName, projectSettings());
         const misfit = files.misfits || [];
@@ -649,32 +664,46 @@
         for (const [path, text] of Object.entries(files)) zip.file(path, text);
         const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 }, mimeType: 'model/3mf' });
         download(blob, `${imageName}.3mf`);
-        const other = !ownProject() && bed()[0] !== 256 ? ' Die Datei ist für den X1C eingerichtet: In Bambu Studio oben links deinen Drucker wählen und kurz prüfen, ob jede Kachel auf ihrer Platte liegt.' : '';
-        setStatus((single ? '3MF heruntergeladen.' : `3MF mit ${parts.length} Platten heruntergeladen. In Bambu Studio öffnen und „Alle Platten slicen“.`) + other);
-        if (misfit.length) setStatus(`Achtung: ${misfit.join(', ')} ${misfit.length === 1 ? 'passt' : 'passen'} nicht ganz aufs Druckbett. Bitte „Max. Kachelgröße“ unter „Erweitert“ verkleinern und neu exportieren.`);
+        const other = !ownProject() && bed()[0] !== 256 ? tr(' Die Datei ist für den X1C eingerichtet: In Bambu Studio oben links deinen Drucker wählen und kurz prüfen, ob jede Kachel auf ihrer Platte liegt.', ' The file is set up for the X1C: choose your printer at the top left in Bambu Studio and check that each tile sits on its plate.') : '';
+        setStatus((single ? tr('3MF heruntergeladen.', '3MF downloaded.') : tr(`3MF mit ${parts.length} Platten heruntergeladen. In Bambu Studio öffnen und „Alle Platten slicen“.`, `3MF with ${parts.length} plates downloaded. Open it in Bambu Studio and choose “Slice all plates”.`)) + other);
+        if (misfit.length) setStatus(tr(`Achtung: ${misfit.join(', ')} ${misfit.length === 1 ? 'passt' : 'passen'} nicht ganz aufs Druckbett. Bitte „Max. Kachelgröße“ unter „Erweitert“ verkleinern und neu exportieren.`, `Warning: ${misfit.join(', ')} ${misfit.length === 1 ? 'does' : 'do'} not fully fit on the build plate. Please reduce “Max. tile size” under “Advanced” and export again.`));
       } else if (single) {
         download(new Blob([Stencil.trianglesToSTL(parts[0].tris, parts[0].name)], { type: 'model/stl' }), `${imageName}.stl`);
-        setStatus('STL heruntergeladen.');
+        setStatus(tr('STL heruntergeladen.', 'STL downloaded.'));
       } else {
-        setStatus('Packe ZIP …');
+        setStatus(tr('Packe ZIP …', 'Packing ZIP …'));
         const zip = new JSZip();
         for (const p of parts) zip.file(`${imageName}_${p.name}.stl`, Stencil.trianglesToSTL(p.tris, p.name));
         const png = await new Promise((r) => ui.canvas.toBlob(r, 'image/png'));
-        zip.file('uebersicht.png', png);
-        zip.file('anleitung.txt', instructions(tiles, st, s));
-        download(await zip.generateAsync({ type: 'blob' }), `${imageName}_kacheln.zip`);
-        setStatus(`ZIP mit ${parts.length} STL-Dateien heruntergeladen.`);
+        zip.file(tr('uebersicht.png', 'overview.png'), png);
+        zip.file(tr('anleitung.txt', 'instructions.txt'), instructions(tiles, st, s));
+        download(await zip.generateAsync({ type: 'blob' }), `${imageName}_${tr('kacheln', 'tiles')}.zip`);
+        setStatus(tr(`ZIP mit ${parts.length} STL-Dateien heruntergeladen.`, `ZIP with ${parts.length} STL files downloaded.`));
       }
     } catch (err) {
       console.error(err);
-      setStatus('Fehler beim Export: ' + err.message);
+      setStatus(tr('Fehler beim Export: ', 'Export error: ') + err.message);
     }
     setBusy(false);
     ui.exportBtn.disabled = false;
   });
 
   function instructions(tiles, st, s) {
-    const lines = [
+    const lines = I18N.lang === 'en' ? [
+      'Image to STL - stencil',
+      '',
+      `Total size: ${fmt(st.W * st.px)} x ${fmt(st.H * st.px)} mm, thickness ${fmt(s.thickness, 1)} mm, marker ${fmt(s.markerMM)} mm`,
+      `Tiles: ${tiles.ny} rows x ${tiles.nx} columns. R = row (from the top), C = column (from the left).`,
+      'The position of each tile is shown in overview.png.',
+      'Each tile has its number as a small cut-out: "1-2" means row 1, column 2.',
+      '',
+      'Printing (Bambu Studio):',
+      '- Place each STL on the plate on its own or several together.',
+      '- 0.2 mm layer height, no supports needed.',
+      '',
+      'Assembly: press the puzzle connectors at the edges together.',
+      s.tabMM ? 'The tabs on the outer edge are meant for taping with painter\'s tape.' : '',
+    ] : [
       'Bild zu STL - Schablone',
       '',
       `Gesamtgröße: ${fmt(st.W * st.px)} x ${fmt(st.H * st.px)} mm, Dicke ${fmt(s.thickness, 1)} mm, Marker ${fmt(s.markerMM)} mm`,

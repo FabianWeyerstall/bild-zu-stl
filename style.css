@@ -156,3 +156,13 @@ aside section.collapsed > :not(h2) { display: none !important; }
   #preview { position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow: auto; }
   .stage canvas { max-height: calc(100vh - 190px); width: auto; }
 }
+
+/* Sprachwahl oben rechts */
+header { position: relative; }
+.lang { position: absolute; top: 16px; right: 24px; display: flex; gap: 6px; }
+.lang button { width: auto; padding: 3px; line-height: 0; background: transparent; border: 2px solid transparent; border-radius: 4px; cursor: pointer; opacity: 0.55; }
+.lang button svg { display: block; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0,0,0,.15); }
+.lang button[aria-pressed="true"] { opacity: 1; border-color: var(--accent); }
+.lang button:hover { opacity: 1; }
+header h1, header p { padding-right: 90px; }
+@media (max-width: 860px) { .lang { top: 12px; right: 16px; } }

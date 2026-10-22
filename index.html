@@ -5,14 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Bild zu STL</title>
   <meta name="description" content="Erzeugt aus einem Bild eine 3D-druckbare Schablone (STL) zum Nachmalen mit Kreidemarkern auf Glas und Wänden.">
-  <link rel="icon" href="favicon.ico?v=24" sizes="any">
-  <link rel="icon" href="favicon-32.png?v=24" type="image/png" sizes="32x32">
-  <link rel="icon" href="favicon.svg?v=24" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=24">
-  <link rel="stylesheet" href="style.css?v=24">
+  <link rel="icon" href="favicon.ico?v=25" sizes="any">
+  <link rel="icon" href="favicon-32.png?v=25" type="image/png" sizes="32x32">
+  <link rel="icon" href="favicon.svg?v=25" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=25">
+  <link rel="stylesheet" href="style.css?v=25">
 </head>
 <body>
   <header>
+    <div class="lang" role="group" aria-label="Sprache / Language" data-no-i18n>
+      <button type="button" data-lang="de" title="Deutsch" aria-label="Deutsch"><svg viewBox="0 0 5 3" width="30" height="18" aria-hidden="true"><rect width="5" height="1" y="0" fill="#000"/><rect width="5" height="1" y="1" fill="#d00"/><rect width="5" height="1" y="2" fill="#ffce00"/></svg></button>
+      <button type="button" data-lang="en" title="English" aria-label="English"><svg viewBox="0 0 60 30" width="30" height="18" aria-hidden="true"><clipPath id="uk-t"><path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/></clipPath><path d="M0,0 v30 h60 v-30 z" fill="#012169"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0 L60,30 M60,0 L0,30" clip-path="url(#uk-t)" stroke="#C8102E" stroke-width="4"/><path d="M30,0 v30 M0,15 h60" stroke="#fff" stroke-width="10"/><path d="M30,0 v30 M0,15 h60" stroke="#C8102E" stroke-width="6"/></svg></button>
+    </div>
     <h1>Bild zu STL</h1>
     <p>Schablonen zum Nachmalen mit Kreidemarker, für Fenster und Wände. Alles läuft in deinem Browser, nichts wird hochgeladen.</p>
   </header>
@@ -152,14 +156,15 @@
     <p>Tipp für Bambu Studio: Schichthöhe 0,2 mm, erste Schicht 0,2 mm. Die Kacheln stecken mit den Puzzle-Verbindern zusammen. <a href="https://github.com/FabianWeyerstall/bild-zu-stl">Quellcode</a></p>
   </footer>
 
-  <script src="vendor/earcut.min.js?v=24"></script>
-  <script src="vendor/jszip.min.js?v=24"></script>
-  <script src="stencil.js?v=24"></script>
-  <script src="vendor/bambu-project-settings.js?v=24"></script>
-  <script src="vendor/bambu-project-settings-a1.js?v=24"></script>
-  <script src="vendor/bambu-project-settings-a1mini.js?v=24"></script>
-  <script src="vendor/bambu-project-settings-h2d.js?v=24"></script>
-  <script src="threemf.js?v=24"></script>
-  <script src="app.js?v=24"></script>
+  <script src="vendor/earcut.min.js?v=25"></script>
+  <script src="vendor/jszip.min.js?v=25"></script>
+  <script src="stencil.js?v=25"></script>
+  <script src="vendor/bambu-project-settings.js?v=25"></script>
+  <script src="vendor/bambu-project-settings-a1.js?v=25"></script>
+  <script src="vendor/bambu-project-settings-a1mini.js?v=25"></script>
+  <script src="vendor/bambu-project-settings-h2d.js?v=25"></script>
+  <script src="threemf.js?v=25"></script>
+  <script src="i18n.js?v=25"></script>
+  <script src="app.js?v=25"></script>
 </body>
 </html>
