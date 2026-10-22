@@ -492,6 +492,19 @@
       if (any) {
         const wide = dilate(thin, W, H, r);
         for (let i = 0; i < W * H; i++) if (wide[i] && inner[i]) holes[i] = 1;
+        // Übergang glätten: Wo eine verbreiterte Linie in eine breite Fläche übergeht (z. B. Linie in
+        // eine gefüllte Ohrspitze), wächst die Fläche dort mit und läuft über 6 Markerradien sanft aus.
+        // Sonst bliebe an der Übergangsstelle eine Stufe. Nur Flächen, die mit der Linie verbunden sind.
+        const taper = 6 * r;
+        const { lab: lab0 } = label(holes0, W, H);
+        const near = featureTransform(thin, W, H), hole = featureTransform(holes0, W, H);
+        for (let i = 0; i < W * H; i++) {
+          if (holes[i] || !inner[i]) continue;
+          const t = Math.sqrt(near.D[i]);
+          if (t >= taper + r) continue;
+          const grow = r * Math.min(1, Math.max(0, 1 - (t - r) / taper));
+          if (Math.sqrt(hole.D[i]) <= grow && lab0[hole.F[i]] === lab0[near.F[i]]) holes[i] = 1;
+        }
         holes = opening(holes, W, H, r);
       }
     }
