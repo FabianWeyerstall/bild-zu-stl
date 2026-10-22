@@ -590,6 +590,24 @@
     schedule(0);
   });
 
+  // Geschätzter Filamentbedarf (PLA, 1,24 g/cm³) aus der Fläche aller Kacheln; beim Materialsparen
+  // dazu, was ohne Sparen gedruckt würde (weggefallene Pixel aus st.cut).
+  function filamentText(st, tiles, s) {
+    let px = 0;
+    for (const t of tiles.tiles) for (let i = 0; i < t.mask.length; i++) px += t.mask[i];
+    const grams = (pixels) => (pixels * st.px * st.px * s.thickness * 1.24) / 1000;
+    const g = grams(px);
+    const round = (v) => fmt(v < 10 ? Math.round(v * 10) / 10 : Math.round(v), v < 10 ? 1 : 0);
+    let text = tr(`ca. ${round(g)} g Filament`, `approx. ${round(g)} g filament`);
+    if (s.saveMaterial && st.cut) {
+      let saved = 0;
+      for (let i = 0; i < st.cut.length; i++) if (st.cut[i] && !st.mat[i]) saved++;
+      const gs = grams(saved), pct = Math.round((100 * gs) / (g + gs));
+      if (gs > 0) text += tr(` (spart ca. ${round(gs)} g, ${pct} %)`, ` (saves approx. ${round(gs)} g, ${pct} %)`);
+    }
+    return text;
+  }
+
   function describe(ms) {
     lastMs = ms;
     const { st, tiles, s } = result;
@@ -602,6 +620,7 @@
       n === 1 ? tr('1 Teil', '1 part') : tr(`${n} Kacheln (${tiles.ny} Reihen × ${tiles.nx} Spalten), größte Seite ${fmt(biggest)} mm`, `${n} tiles (${tiles.ny} rows × ${tiles.nx} columns), largest side ${fmt(biggest)} mm`),
       tr(`${st.bridged} Haltesteg${st.bridged === 1 ? '' : 'e'}`, `${st.bridged} holding bridge${st.bridged === 1 ? '' : 's'}`),
       n > 1 ? tr(`${tiles.knobs.length} Puzzle-Verbinder`, `${tiles.knobs.length} puzzle connector${tiles.knobs.length === 1 ? '' : 's'}`) + (tiles.bareSeams ? tr(` (${tiles.bareSeams} Naht${tiles.bareSeams === 1 ? '' : 'e'} ohne Verbinder, dort mit Klebeband fixieren)`, ` (${tiles.bareSeams} seam${tiles.bareSeams === 1 ? '' : 's'} without connectors, tape them there)`) : '') : null,
+      filamentText(st, tiles, s),
       tr('Raster', 'Grid') + ` ${fmt(st.px, 2)} mm`,
     ].filter(Boolean);
     let text = parts.join(' · ');
