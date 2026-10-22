@@ -1,0 +1,12 @@
+# Stößt bei jedem Push auf dev das Veröffentlichen an (siehe pages.yml).
+name: Testseite anstoßen
+
+on:
+  push:
+    branches: [dev]
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "dev wurde aktualisiert, pages.yml veröffentlicht jetzt Live- und Testseite."

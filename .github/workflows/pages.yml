@@ -1,0 +1,51 @@
+# Veröffentlicht die Live-Seite (main) unter / und die Testseite (dev) unter /test/.
+# Läuft bei Pushes auf main direkt, bei Pushes auf dev über den Workflow „Testseite anstoßen“
+# (workflow_run läuft im Kontext von main, deshalb darf auch die Testseite deployen).
+name: Pages veröffentlichen
+
+on:
+  push:
+    branches: [main]
+  workflow_run:
+    workflows: ["Testseite anstoßen"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Live-Stand (main)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: site
+      # Der Ordner test/ (Testskripte) wird durch die Testseite ersetzt
+      - name: Platz für die Testseite
+        run: rm -rf site/test site/.git site/.github
+      - name: Test-Stand (dev)
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          ref: dev
+          path: site/test
+      - name: Aufräumen
+        run: rm -rf site/test/.git site/test/.github site/test/test
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4

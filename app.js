@@ -3,6 +3,15 @@
 
   const $ = (id) => document.getElementById(id);
   const tr = I18N.tr;
+  // Testumgebung (dev-Zweig unter /test/): sichtbar markiert, Einstellungen getrennt von der Live-Seite
+  const TEST = /\/test\//.test(location.pathname);
+  if (TEST) {
+    document.title = 'TEST · ' + document.title;
+    const badge = document.createElement('span');
+    badge.className = 'testBadge';
+    badge.textContent = 'TEST';
+    document.querySelector('header h1').append(' ', badge);
+  }
   let busyOn = false, lastMs = 0, dropLabel = null;
   const ui = {
     file: $('file'), drop: $('drop'), dropText: $('dropText'),
@@ -363,7 +372,7 @@
 
   // --- Einstellungen im Browser merken -----------------------------------
 
-  const STORE = 'bild-zu-stl:einstellungen';
+  const STORE = 'bild-zu-stl:einstellungen' + (TEST ? ':test' : '');
   const storable = () => [...document.querySelectorAll('#settings input, #settings select')]
     .filter((el) => el !== ui.file && el !== ui.height && el.id !== 'widthRange');
   const key = (el) => (el.type === 'radio' ? el.name + '=' + el.value : el.id);
@@ -391,7 +400,7 @@
 
   // --- Abschnitte einklappen (Zustand wird gemerkt) ------------------------
 
-  const FOLD_STORE = 'bild-zu-stl:eingeklappt';
+  const FOLD_STORE = 'bild-zu-stl:eingeklappt' + (TEST ? ':test' : '');
   let folded = [];
   try { folded = JSON.parse(localStorage.getItem(FOLD_STORE) || '[]'); } catch (e) { folded = []; }
   document.querySelectorAll('#settings > section:not(.actions) > h2').forEach((h, idx) => {
