@@ -165,7 +165,7 @@
   // Druckbett des gewählten Bambu-Druckers (Breite × Tiefe in mm)
   const bed = () => $('printer').value.split(':')[0].split('x').map(Number);
   // Bambu-Projektvorlage je Drucker, sonst die des X1C
-  const PROJECTS = { a1: self.BAMBU_PROJECT_SETTINGS_A1, a1mini: self.BAMBU_PROJECT_SETTINGS_A1MINI, h2d: self.BAMBU_PROJECT_SETTINGS_H2D };
+  const PROJECTS = { a1mini: self.BAMBU_PROJECT_SETTINGS_A1MINI, h2d: self.BAMBU_PROJECT_SETTINGS_H2D, h2s: self.BAMBU_PROJECT_SETTINGS_H2S };
   const ownProject = () => PROJECTS[$('printer').value.split(':')[1]];
   const projectSettings = () => ownProject() || self.BAMBU_PROJECT_SETTINGS;
   // Größte Kachel für den gewählten Drucker; X1C und P1 haben vorne links eine gesperrte Ecke (18 × 28 mm)
@@ -376,6 +376,7 @@
     try { data = JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (e) { data = null; }
     if (!data) return;
     if (data.clearance === '0.2') data.clearance = '0.1'; // alter Standard, seit dem Testdruck 0,1 mm
+    if (data.printer === '340x320') data.printer = '340x320:h2s'; // H2S hat jetzt eine eigene Vorlage
     for (const el of storable()) {
       const v = data[key(el)];
       if (v === undefined) continue;
