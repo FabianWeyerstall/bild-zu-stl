@@ -713,7 +713,7 @@
     const lines = I18N.lang === 'en' ? [
       'Stencilio Print - stencil',
       '',
-      `Total size: ${fmt(st.W * st.px)} x ${fmt(st.H * st.px)} mm, thickness ${fmt(s.thickness, 1)} mm, marker ${fmt(s.markerMM)} mm`,
+      `Total size: ${fmt(st.W * st.px)} x ${fmt(st.H * st.px)} mm, height ${fmt(s.thickness, 1)} mm, marker ${fmt(s.markerMM)} mm`,
       `Tiles: ${tiles.ny} rows x ${tiles.nx} columns. R = row (from the top), C = column (from the left).`,
       'The position of each tile is shown in overview.png.',
       'Each tile has its number as a small cut-out: "1-2" means row 1, column 2.',
@@ -727,7 +727,7 @@
     ] : [
       'Stencilio Print - Schablone',
       '',
-      `Gesamtgröße: ${fmt(st.W * st.px)} x ${fmt(st.H * st.px)} mm, Dicke ${fmt(s.thickness, 1)} mm, Marker ${fmt(s.markerMM)} mm`,
+      `Gesamtgröße: ${fmt(st.W * st.px)} x ${fmt(st.H * st.px)} mm, Höhe ${fmt(s.thickness, 1)} mm, Marker ${fmt(s.markerMM)} mm`,
       `Kacheln: ${tiles.ny} Reihen x ${tiles.nx} Spalten. R = Reihe (von oben), S = Spalte (von links).`,
       'Die Lage jeder Kachel siehst du in uebersicht.png.',
       'Jede Kachel hat ihre Nummer als kleinen Ausschnitt: "1-2" heißt Reihe 1, Spalte 2.',

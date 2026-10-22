@@ -46,6 +46,9 @@
     'An Druckplatten anpassen (größte Breite je Plattenzahl):': 'Fit to build plates (largest width per plate count):',
     '5. Druckteil': '5. Printed part',
     'Dicke': 'Thickness',
+    'Höhe der Schablone': 'Stencil height',
+    'Gemeint ist die Höhe des Druckteils, nicht die Düse. Jede Düse passt. Empfohlen: 0,6 mm (stabiler), 0,4 mm geht auch.':
+      'This is the height of the printed part, not the nozzle. Any nozzle works. Recommended: 0.6 mm (sturdier), 0.4 mm works too.',
     '0,2 mm': '0.2 mm',
     '0,4 mm': '0.4 mm',
     '0,6 mm': '0.6 mm',

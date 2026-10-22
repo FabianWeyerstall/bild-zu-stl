@@ -47,7 +47,7 @@ Farben in der Vorschau: blau = Schablone, weiß = Öffnung, orange = entfällt w
 
 ## Drucken
 
-- Dicke 0,4 mm reicht (2 Schichten), PLA oder PETG, keine Stützen.
+- Höhe der Schablone: 0,6 mm empfohlen (stabiler), 0,4 mm geht auch. Das ist die Höhe des Druckteils, nicht die Düse; jede Düse passt. PLA oder PETG, keine Stützen.
 - Auf der glatten PEI-Platte (Smooth Plate) gedruckt, haftet die glatte Unterseite meist ganz ohne Klebeband am Glas.
 - Kacheln sind mit R (Reihe, von oben) und S (Spalte, von links) benannt. Jede Kachel trägt ihre Nummer als kleinen Ausschnitt, z. B. „1-2“ für Reihe 1, Spalte 2.
 - Stift oder Farbe zuerst an einer unauffälligen Stelle testen.
