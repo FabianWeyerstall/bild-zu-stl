@@ -43,6 +43,7 @@
       thickness: radio('thick'),
       markerMM: radio('marker'),
       widenThin: ui.thin.value === 'widen',
+      slimMM: $('slim').value === 'slim' ? radio('marker') + 0.5 : 0,
       threshold: parseInt(ui.threshold.value, 10),
       invert: ui.invert.checked,
       smoothMM: Math.max(0, num(ui.smooth, 0.3)),
@@ -255,7 +256,7 @@
 
   function lossAt(width) {
     const s = readSettings();
-    const key = JSON.stringify([s.markerMM, s.minStegMM, s.widenThin, s.threshold, s.invert, s.smoothMM]);
+    const key = JSON.stringify([s.markerMM, s.minStegMM, s.widenThin, s.slimMM, s.threshold, s.invert, s.smoothMM]);
     if (key !== lossKey) { lossCache = new Map(); lossKey = key; }
     const w = Math.round(width);
     if (!lossCache.has(w)) {
@@ -427,7 +428,7 @@
     try {
       const s = readSettings();
       const t0 = performance.now();
-      const key = JSON.stringify([s.px, s.widthMM, s.heightMM, s.borderMM, s.tabMM, s.markerMM, s.widenThin, s.threshold, s.invert, s.smoothMM, s.minStegMM]);
+      const key = JSON.stringify([s.px, s.widthMM, s.heightMM, s.borderMM, s.tabMM, s.markerMM, s.widenThin, s.slimMM, s.threshold, s.invert, s.smoothMM, s.minStegMM]);
       if (!base || key !== baseKey) {
         const { gray, iw, ih } = rasterize(s);
         base = Stencil.prepareStencil(gray, iw, ih, s);

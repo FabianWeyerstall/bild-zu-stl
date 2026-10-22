@@ -316,6 +316,65 @@
     return finishStencil(prepareStencil(gray, iw, ih, opts), opts, edits);
   }
 
+  // Verschmälert Linien, die breiter als 'width' Pixel sind, auf etwa 'width' um ihre
+  // Mittellinie. R(x) = Radius des größten Kreises in der Öffnung, der x enthält (stufenweise
+  // über Öffnungen bestimmt). Die häufigste Linienstärke im Bild gilt als „Linie“; deutlich
+  // dickere Formen (ausgemalte Flächen, Fledermäuse, Gesichter) bleiben unverändert.
+  function slimLines(holes, W, H, width, maxR, step) {
+    const N = W * H;
+    const half = width / 2;
+    const D = sqDist(holes, W, H, 0);
+    // Stärkenkarte auf einem gröberen Raster (mind. 3 Pixel je halber Zielbreite), das spart Zeit
+    const k = Math.max(1, Math.floor(half / 3));
+    const w = Math.ceil(W / k), h = Math.ceil(H / k), n = w * h;
+    const small = new Uint8Array(n);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) small[y * w + x] = holes[Math.min(H - 1, y * k + (k >> 1)) * W + Math.min(W - 1, x * k + (k >> 1))];
+    const Ds = k === 1 ? D : sqDist(small, w, h, 0);
+    const Rs = new Float32Array(n);
+    const levels = [];
+    for (let r = half; r < maxR; r += Math.max(step, r * 0.08)) levels.push(r);
+    levels.push(maxR);
+    for (const r of levels) {
+      const rk = r / k, r2 = rk * rk;
+      const core = new Uint8Array(n);
+      let any = false;
+      for (let i = 0; i < n; i++) if (Ds[i] > r2) { core[i] = 1; any = true; }
+      if (!any) break;
+      const cover = dilate(core, w, h, rk);
+      // ab maxR gilt alles als Fläche
+      for (let i = 0; i < n; i++) if (cover[i] && small[i]) Rs[i] = r >= maxR ? Infinity : r;
+    }
+    const R = new Float32Array(N);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      if (holes[i]) R[i] = Rs[Math.floor(y / k) * w + Math.floor(x / k)];
+    }
+    // häufigste Linienstärke (nach Fläche)
+    const hist = new Map();
+    for (let i = 0; i < N; i++) if (R[i] > 0 && R[i] < Infinity) hist.set(R[i], (hist.get(R[i]) || 0) + 1);
+    let lineR = 0, best = 0;
+    for (const [r, n] of hist) if (n > best) { best = n; lineR = r; }
+    if (!lineR) return;
+    const areaR = lineR * 1.4 + step;
+    // Mittellinie: Kamm der Abstandskarte; Ausläufer zu Ecken (kleiner Randabstand) zählen nicht
+    const axis = new Uint8Array(N);
+    for (let y = 1; y < H - 1; y++) {
+      for (let x = 1; x < W - 1; x++) {
+        const i = y * W + x;
+        if (!R[i] || R[i] >= areaR) continue;
+        const d = D[i];
+        if (Math.sqrt(d) < 0.6 * R[i]) continue;
+        if ((d >= D[i - 1] && d >= D[i + 1]) || (d >= D[i - W] && d >= D[i + W]) ||
+            (d >= D[i - W - 1] && d >= D[i + W + 1]) || (d >= D[i - W + 1] && d >= D[i + W - 1])) axis[i] = 1;
+      }
+    }
+    const near = dilate(axis, W, H, half);
+    for (let i = 0; i < N; i++) {
+      if (!holes[i] || !R[i] || R[i] >= areaR || near[i]) continue;
+      if (Math.sqrt(D[i]) < R[i] - half) holes[i] = 0;
+    }
+  }
+
   // Teurer Teil: Bild -> Material/Öffnungen mit Marker- und Stegbreite (ohne Haltestege).
   function prepareStencil(gray, iw, ih, opts) {
     const p = opts.px;
@@ -337,6 +396,9 @@
         holes0[i] = dark !== !!opts.invert ? 1 : 0;
       }
     }
+
+    // 0) Breite Linien auf Markerbreite (+0,5 mm) verschmälern, ausgemalte Flächen bleiben
+    if (opts.slimMM > 0) slimLines(holes0, W, H, opts.slimMM / p, Math.max(8, 3 * opts.slimMM) / p, Math.max(0.25, opts.markerMM / 6) / p);
 
     // 1) Öffnungen mindestens so breit wie der Marker
     const r = opts.markerMM / p / 2;
