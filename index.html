@@ -7,11 +7,11 @@
   <meta name="application-name" content="Stencilio Print">
   <meta name="apple-mobile-web-app-title" content="Stencilio Print">
   <meta name="description" content="Erzeugt aus einem Bild eine 3D-druckbare Schablone (STL) zum Nachmalen mit Kreidemarkern auf Glas und Wänden.">
-  <link rel="icon" href="favicon.ico?v=27" sizes="any">
-  <link rel="icon" href="favicon-32.png?v=27" type="image/png" sizes="32x32">
-  <link rel="icon" href="favicon.svg?v=27" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=27">
-  <link rel="stylesheet" href="style.css?v=27">
+  <link rel="icon" href="favicon.ico?v=28" sizes="any">
+  <link rel="icon" href="favicon-32.png?v=28" type="image/png" sizes="32x32">
+  <link rel="icon" href="favicon.svg?v=28" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=28">
+  <link rel="stylesheet" href="style.css?v=28">
 </head>
 <body>
   <header>
@@ -33,6 +33,29 @@
           <span id="dropText">Bild hierher ziehen oder klicken</span>
         </label>
         <label class="check"><input type="checkbox" id="crop" checked>Leeren Rand ums Motiv abschneiden</label>
+        <details class="examples" id="examples" open>
+          <summary>Oder mit einem Beispiel starten</summary>
+          <p class="exGroup">Halloween</p>
+          <div class="exGrid">
+            <button type="button" data-example="kuerbis-trio"><img src="examples/kuerbis-trio-thumb.png" alt="" loading="lazy" width="200" height="150"><span>Kürbisse</span></button>
+            <button type="button" data-example="gespenst"><img src="examples/gespenst-thumb.png" alt="" loading="lazy" width="200" height="150"><span>Gespenst</span></button>
+            <button type="button" data-example="katze"><img src="examples/katze-thumb.png" alt="" loading="lazy" width="200" height="150"><span>Katze</span></button>
+            <button type="button" data-example="hexenregal"><img src="examples/hexenregal-thumb.png" alt="" loading="lazy" width="200" height="150"><span>Hexenregal</span></button>
+          </div>
+          <p class="exGroup">Für Kinder</p>
+          <div class="exGrid">
+            <button type="button" data-example="schmetterling"><img src="examples/schmetterling-thumb.png" alt="" loading="lazy" width="200" height="150"><span>Schmetterling</span></button>
+            <button type="button" data-example="fisch"><img src="examples/fisch-thumb.png" alt="" loading="lazy" width="200" height="150"><span>Fisch</span></button>
+            <button type="button" data-example="haus"><img src="examples/haus-thumb.png" alt="" loading="lazy" width="200" height="150"><span>Haus</span></button>
+          </div>
+          <p class="exGroup">Sterne &amp; Winter</p>
+          <div class="exGrid">
+            <button type="button" data-example="sternenhimmel"><img src="examples/sternenhimmel-thumb.png" alt="" loading="lazy" width="200" height="150"><span>Sternenhimmel</span></button>
+            <button type="button" data-example="sternschnuppen"><img src="examples/sternschnuppen-thumb.png" alt="" loading="lazy" width="200" height="150"><span>Sternschnuppen</span></button>
+            <button type="button" data-example="schneeflocken"><img src="examples/schneeflocken-thumb.png" alt="" loading="lazy" width="200" height="150"><span>Schneeflocken</span></button>
+          </div>
+          <p class="hint">Alle Beispiele sind eigene Motive und dürfen frei verwendet werden.</p>
+        </details>
       </section>
 
       <section>
@@ -220,16 +243,16 @@
     </div>
   </dialog>
 
-  <script src="vendor/earcut.min.js?v=27"></script>
-  <script src="vendor/jszip.min.js?v=27"></script>
-  <script src="stencil.js?v=27"></script>
-  <script src="vendor/bambu-project-settings.js?v=27"></script>
-  <script src="vendor/bambu-project-settings-a1.js?v=27"></script>
-  <script src="vendor/bambu-project-settings-a1mini.js?v=27"></script>
-  <script src="vendor/bambu-project-settings-h2d.js?v=27"></script>
-  <script src="threemf.js?v=27"></script>
-  <script src="i18n.js?v=27"></script>
-  <script src="intro.js?v=27"></script>
-  <script src="app.js?v=27"></script>
+  <script src="vendor/earcut.min.js?v=28"></script>
+  <script src="vendor/jszip.min.js?v=28"></script>
+  <script src="stencil.js?v=28"></script>
+  <script src="vendor/bambu-project-settings.js?v=28"></script>
+  <script src="vendor/bambu-project-settings-a1.js?v=28"></script>
+  <script src="vendor/bambu-project-settings-a1mini.js?v=28"></script>
+  <script src="vendor/bambu-project-settings-h2d.js?v=28"></script>
+  <script src="threemf.js?v=28"></script>
+  <script src="i18n.js?v=28"></script>
+  <script src="intro.js?v=28"></script>
+  <script src="app.js?v=28"></script>
 </body>
 </html>

@@ -224,6 +224,27 @@
     scheduleDetail();
   }
 
+  // --- Beispielbilder ------------------------------------------------------
+
+  document.querySelectorAll('#examples [data-example]').forEach((b) => b.addEventListener('click', async () => {
+    const name = b.dataset.example;
+    const label = b.querySelector('span').textContent.trim();
+    try {
+      const res = await fetch(`examples/${name}.png`);
+      if (!res.ok) throw new Error(res.status);
+      const blob = await res.blob();
+      loadFile(new File([blob], `${label}.png`, { type: 'image/png' }));
+      document.querySelectorAll('#examples [data-example]').forEach((x) => x.classList.toggle('active', x === b));
+      $('examples').open = false;
+    } catch (err) {
+      setStatus(tr('Das Beispiel konnte nicht geladen werden.', 'The example could not be loaded.'));
+    }
+  }));
+  ui.file.addEventListener('change', () => {
+    document.querySelectorAll('#examples [data-example]').forEach((x) => x.classList.remove('active'));
+    $('examples').open = false;
+  });
+
   // --- Malbarkeit: geht bei dieser Breite zu viel vom Bild verloren? ------
   // Schnelle Abschätzung auf einem kleinen Raster des Bildes; das Ergebnis je Breite wird gemerkt.
 
