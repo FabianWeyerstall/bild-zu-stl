@@ -1,6 +1,6 @@
 # Stencilio Print
 
-Web-App, die aus einem Bild eine 3D-druckbare **Schablone** macht. Die Schablone wird auf Fenster oder Wand gelegt und mit einem Kreidemarker (1, 3 oder 6 mm) nachgemalt.
+Web-App, die aus einem Bild eine 3D-druckbare **Schablone** macht. Die Schablone wird aufgelegt und nachgemalt: mit Kreidemarker am Fenster, Filzstift auf Papier, Farbe an der Wand, Textilstift auf Stoff und mehr. Die Markerbreite (1, 3 oder 6 mm) bestimmt die kleinste Öffnung.
 
 **App öffnen:** https://fabianweyerstall.github.io/bild-zu-stl/
 

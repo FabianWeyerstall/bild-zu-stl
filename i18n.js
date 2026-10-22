@@ -4,8 +4,8 @@
 (function () {
   const STORE = 'bild-zu-stl:sprache';
   const EN = {
-    'Schablonen zum Nachmalen mit Kreidemarker, für Fenster und Wände. Alles läuft in deinem Browser, nichts wird hochgeladen.':
-      'Stencils for tracing with chalk markers on windows and walls. Everything runs in your browser, nothing is uploaded.',
+    'Schablonen aus dem 3D-Drucker für jedes Motiv: zum Nachmalen mit Kreidemarker am Fenster, mit Filzstift auf Papier, mit Farbe an der Wand und vielem mehr. Alles läuft in deinem Browser, nichts wird hochgeladen.':
+      '3D-printed stencils for any design: trace with chalk markers on windows, felt pens on paper, paint on walls and much more. Everything runs in your browser, nothing is uploaded.',
     '1. Bild': '1. Image',
     'Oder mit einem Beispiel starten': 'Or start with an example',
     'Für Kinder': 'For kids',
@@ -83,8 +83,8 @@
     'Tipp für Bambu Studio: Schichthöhe 0,2 mm, erste Schicht 0,2 mm. Die Kacheln stecken mit den Puzzle-Verbindern zusammen.':
       'Tip for Bambu Studio: 0.2 mm layer height, 0.2 mm first layer. The tiles snap together with the puzzle connectors.',
     'Quellcode': 'Source code',
-    'Erzeugt aus einem Bild eine 3D-druckbare Schablone (STL) zum Nachmalen mit Kreidemarkern auf Glas und Wänden.':
-      'Turns an image into a 3D-printable stencil (STL) for tracing with chalk markers on glass and walls.',
+    'Erzeugt aus einem Bild eine 3D-druckbare Schablone zum Nachmalen, für Fenster, Papier, Wände, Stoff und mehr.':
+      'Turns an image into a 3D-printable stencil for tracing on windows, paper, walls, fabric and more.',
   };
   const ATTRS = ['title', 'aria-label', 'placeholder', 'content'];
 
