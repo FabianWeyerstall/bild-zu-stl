@@ -27,14 +27,20 @@
     loss({ gray, w, h, s }) {
       return Stencil.paintLoss(gray, w, h, s);
     },
-    // Kachel als Netz, dazu die erhabene Nummer (0,4 mm hoch, leicht in die Platte versenkt, damit sie verschmilzt)
+    // Kachel als Netz. Die Nummer (labels = Pixel) wird in die Oberseite eingeprägt: unten eine volle
+    // Lage, oben eine Lage mit ausgesparten Ziffern. Beide überlappen 0,1 mm, damit der Slicer sie verschmilzt.
     mesh({ mask, w, h, px, thickness, smooth, shrink, labels }) {
-      const tris = Stencil.maskToTriangles(mask, w, h, px, thickness, 0.7, smooth, shrink);
-      if (!labels || !labels.length) return tris;
-      const extra = Stencil.boxesToTriangles(labels, h * px, Math.max(0, thickness - 0.1), thickness + 0.4);
-      const out = new Float32Array(tris.length + extra.length);
-      out.set(tris);
-      out.set(extra, tris.length);
+      const depth = Math.min(0.4, thickness - 0.2);
+      if (!labels || !labels.length || depth < 0.15) return Stencil.maskToTriangles(mask, w, h, px, thickness, 0.7, smooth, shrink);
+      const z = thickness - depth;
+      const lower = Stencil.maskToTriangles(mask, w, h, px, z + 0.05, 0.7, smooth, shrink);
+      const topMask = mask.slice();
+      for (const k of labels) topMask[k] = 0;
+      const upper = Stencil.maskToTriangles(topMask, w, h, px, depth + 0.05, 0.7, smooth, shrink);
+      for (let k = 2; k < upper.length; k += 3) upper[k] += z - 0.05;
+      const out = new Float32Array(lower.length + upper.length);
+      out.set(lower);
+      out.set(upper, lower.length);
       return out;
     },
   };

@@ -761,8 +761,8 @@
           const num = stampNumber(m, w, h, p, `${r + 1}-${c + 1}`, area);
           if (num) {
             labelled = true;
-            labels = num.boxes;
-            if (st.markMask) for (const k of num.pixels) {
+            labels = num;
+            if (st.markMask) for (const k of num) {
               const x = k % w, y = (k - x) / w;
               st.markMask[(y + y0) * W + (x + x0)] = 1;
             }
@@ -811,8 +811,8 @@
   }
 
   // Sucht eine volle Materialfläche (möglichst oben links) für die Kachelnummer. Die Nummer wird nicht
-  // ausgeschnitten (sonst malt man sie mit), sondern später erhaben auf die Oberseite gedruckt.
-  // Liefert die Ziffern-Rechtecke in mm (Kachel-Koordinaten, y nach unten) und die Pixel für die Vorschau.
+  // ausgeschnitten (sonst malt man sie mit), sondern später in die Oberseite eingeprägt; beide Seiten
+  // bleiben flach, die Schablone lässt sich also auch wenden. Liefert die Ziffern-Pixel der Kachel.
   const LABEL_SCALES = [2, 5 / 3, 4 / 3, 1]; // Ziffernhöhe 12, 10, 8, 6 mm: die größte, die Platz hat
   function stampNumber(m, w, h, p, text, area) {
     const S = new Int32Array((w + 1) * (h + 1));
@@ -850,26 +850,9 @@
           }
         }
       }
-      return { boxes, pixels };
+      return pixels;
     }
     return null;
-  }
-
-  // Quader für die erhabene Kachelnummer (mm, y wie im Netz nach oben, daher an der Kachelhöhe gespiegelt)
-  function boxesToTriangles(boxes, tileH, z0, z1) {
-    const out = [];
-    const quad = (a, b, c, d) => out.push(...a, ...b, ...c, ...a, ...c, ...d);
-    for (const [x0, yt, x1, yb] of boxes) {
-      const y0 = tileH - yb, y1 = tileH - yt;
-      const v = (x, y, z) => [x, y, z];
-      quad(v(x0, y0, z0), v(x0, y1, z0), v(x1, y1, z0), v(x1, y0, z0)); // unten
-      quad(v(x0, y0, z1), v(x1, y0, z1), v(x1, y1, z1), v(x0, y1, z1)); // oben
-      quad(v(x0, y0, z0), v(x1, y0, z0), v(x1, y0, z1), v(x0, y0, z1));
-      quad(v(x1, y0, z0), v(x1, y1, z0), v(x1, y1, z1), v(x1, y0, z1));
-      quad(v(x1, y1, z0), v(x0, y1, z0), v(x0, y1, z1), v(x1, y1, z1));
-      quad(v(x0, y1, z0), v(x0, y0, z0), v(x0, y0, z1), v(x0, y1, z1));
-    }
-    return out;
   }
 
   // ---------------------------------------------------------------------------
@@ -1184,7 +1167,7 @@
   }
 
   return {
-    buildStencil, prepareStencil, finishStencil, planTiles, makeTiles, maskToTriangles, boxesToTriangles, trianglesToSTL,
+    buildStencil, prepareStencil, finishStencil, planTiles, makeTiles, maskToTriangles, trianglesToSTL,
     // für Tests
     paintLoss,
     _internal: { opening, erode, dilate, label, fixDiagonals, traceLoops, simplifyClosed, signedArea, addBridges },
