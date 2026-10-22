@@ -518,8 +518,8 @@
     const nx = count(W * p), ny = count(H * p);
     const maxPx = Math.floor((nx * ny > 1 ? opts.maxTileMM - knobLen : opts.maxTileMM) / p);
 
-    // Schnittlinien dorthin legen, wo sie möglichst wenige Linien kreuzen.
-    // Kosten einer Spalte/Zeile = Anzahl der Wechsel Material <-> Öffnung.
+    // Standard: gleich große Kacheln. Mit alignCuts dürfen die Schnitte um bis zu 20 % dorthin wandern,
+    // wo sie möglichst wenige Linien kreuzen (Kosten einer Spalte/Zeile = Wechsel Material <-> Öffnung).
     function cuts(n, len, vertical) {
       const cost = new Float64Array(len);
       const other = vertical ? H : W;
@@ -534,7 +534,7 @@
       }
       const out = [0];
       const ideal = len / n;
-      const window = Math.round(ideal * 0.2);
+      const window = opts.alignCuts ? Math.round(ideal * 0.2) : 0;
       for (let k = 1; k < n; k++) {
         const target = Math.round((k * len) / n);
         const prev = out[k - 1];

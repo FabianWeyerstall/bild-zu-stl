@@ -58,6 +58,7 @@
       cornerMM: Math.max(0, num(ui.corner, 1)),
       maxTileMM: Math.min(tileLimit(), Math.max(60, num(ui.maxTile, 240))),
       clearanceMM: Math.max(0, num(ui.clearance, 0.1)),
+      alignCuts: $('alignCuts').checked,
     };
     const totalW = s.widthMM + 2 * s.borderMM, totalH = s.heightMM + 2 * s.borderMM;
     const finest = Math.min(s.markerMM, s.minStegMM, s.bridgeMM);

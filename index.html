@@ -17,11 +17,11 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="apple-mobile-web-app-title" content="Stencilio Print">
   <meta name="description" content="Erzeugt aus einem Bild eine 3D-druckbare Schablone zum Nachmalen, für Fenster, Papier, Wände, Stoff und mehr.">
-  <link rel="icon" href="favicon.ico?v=39" sizes="any">
-  <link rel="icon" href="favicon-32.png?v=39" type="image/png" sizes="32x32">
-  <link rel="icon" href="favicon.svg?v=39" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=39">
-  <link rel="stylesheet" href="style.css?v=39">
+  <link rel="icon" href="favicon.ico?v=40" sizes="any">
+  <link rel="icon" href="favicon-32.png?v=40" type="image/png" sizes="32x32">
+  <link rel="icon" href="favicon.svg?v=40" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=40">
+  <link rel="stylesheet" href="style.css?v=40">
 </head>
 <body>
   <header>
@@ -148,6 +148,7 @@
         <label>Breite der Haltestege (mm)<input type="number" id="bridge" value="2" min="0.8" max="10" step="0.1"></label>
         <label>Max. Kachelgröße (mm)<input type="number" id="maxTile" value="236" min="60" max="340" step="1"></label>
         <label>Spiel der Puzzle-Verbinder (mm)<input type="number" id="clearance" value="0.1" min="0" max="1" step="0.05"></label>
+        <label class="check"><input type="checkbox" id="alignCuts">Kachelschnitte an Linien ausrichten (Kacheln dann unterschiedlich groß)</label>
         <p class="hint">Wird bei der Druckerauswahl gesetzt: kürzere Bettseite minus 16 mm Rand (X1C/P1: 236 mm wegen der gesperrten Ecke vorne links).</p>
         <p class="hint">Deine Einstellungen werden in diesem Browser gespeichert.</p>
         <button type="button" id="resetSettings" class="secondary">Einstellungen zurücksetzen</button>
@@ -286,17 +287,17 @@
     </div>
   </dialog>
 
-  <script src="vendor/earcut.min.js?v=39"></script>
-  <script src="vendor/jszip.min.js?v=39"></script>
-  <script src="stencil.js?v=39"></script>
-  <script src="vendor/bambu-project-settings.js?v=39"></script>
-  <script src="vendor/bambu-project-settings-a1.js?v=39"></script>
-  <script src="vendor/bambu-project-settings-a1mini.js?v=39"></script>
-  <script src="vendor/bambu-project-settings-h2d.js?v=39"></script>
-  <script src="threemf.js?v=39"></script>
-  <script src="i18n.js?v=39"></script>
-  <script src="intro.js?v=39"></script>
-  <script src="jobs.js?v=39"></script>
-  <script src="app.js?v=39"></script>
+  <script src="vendor/earcut.min.js?v=40"></script>
+  <script src="vendor/jszip.min.js?v=40"></script>
+  <script src="stencil.js?v=40"></script>
+  <script src="vendor/bambu-project-settings.js?v=40"></script>
+  <script src="vendor/bambu-project-settings-a1.js?v=40"></script>
+  <script src="vendor/bambu-project-settings-a1mini.js?v=40"></script>
+  <script src="vendor/bambu-project-settings-h2d.js?v=40"></script>
+  <script src="threemf.js?v=40"></script>
+  <script src="i18n.js?v=40"></script>
+  <script src="intro.js?v=40"></script>
+  <script src="jobs.js?v=40"></script>
+  <script src="app.js?v=40"></script>
 </body>
 </html>
