@@ -27,8 +27,15 @@
     loss({ gray, w, h, s }) {
       return Stencil.paintLoss(gray, w, h, s);
     },
-    mesh({ mask, w, h, px, thickness, smooth, shrink }) {
-      return Stencil.maskToTriangles(mask, w, h, px, thickness, 0.7, smooth, shrink);
+    // Kachel als Netz, dazu die erhabene Nummer (0,4 mm hoch, leicht in die Platte versenkt, damit sie verschmilzt)
+    mesh({ mask, w, h, px, thickness, smooth, shrink, labels }) {
+      const tris = Stencil.maskToTriangles(mask, w, h, px, thickness, 0.7, smooth, shrink);
+      if (!labels || !labels.length) return tris;
+      const extra = Stencil.boxesToTriangles(labels, h * px, Math.max(0, thickness - 0.1), thickness + 0.4);
+      const out = new Float32Array(tris.length + extra.length);
+      out.set(tris);
+      out.set(extra, tris.length);
+      return out;
     },
   };
 

@@ -677,7 +677,7 @@
         const t = tiles.tiles[k];
         setStatus(tr(`Erzeuge Kachel ${k + 1} von ${tiles.tiles.length} …`, `Creating tile ${k + 1} of ${tiles.tiles.length} …`));
         await new Promise((r) => setTimeout(r, 15));
-        const tris = await calc('mesh', { mask: t.mask, w: t.w, h: t.h, px: st.px, thickness: s.thickness, smooth: $('vector').checked, shrink: single ? 0 : s.clearanceMM / 2 });
+        const tris = await calc('mesh', { mask: t.mask, w: t.w, h: t.h, px: st.px, thickness: s.thickness, smooth: $('vector').checked, shrink: single ? 0 : s.clearanceMM / 2, labels: t.labels });
         parts.push({ name: single ? imageName : tileName(t), tris, width: t.widthMM, height: t.heightMM });
       }
       if (as3mf) {

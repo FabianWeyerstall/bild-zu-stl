@@ -754,22 +754,21 @@
         for (let k = 1; k <= n; k++) if (sizes[k] >= minArea) pieces++;
         for (let i = 0; i < w * h; i++) if (m[i] && sizes[lab[i]] < minArea) m[i] = 0;
         fixDiagonals(m, w, h, false);
-        let labelled = false;
+        let labelled = false, labels = [];
         if (nx * ny > 1) {
           const area = new Uint8Array(w * h);
           for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) area[y * w + x] = !st.area || st.area[(y + y0) * W + x + x0] ? 1 : 0;
-          const cut = stampNumber(m, w, h, p, `${r + 1}-${c + 1}`, area);
-          if (cut) {
+          const num = stampNumber(m, w, h, p, `${r + 1}-${c + 1}`, area);
+          if (num) {
             labelled = true;
-            for (const k of cut) {
+            labels = num.boxes;
+            if (st.markMask) for (const k of num.pixels) {
               const x = k % w, y = (k - x) / w;
-              const i = (y + y0) * W + (x + x0);
-              mat[i] = 0;
-              if (st.markMask) st.markMask[i] = 1;
+              st.markMask[(y + y0) * W + (x + x0)] = 1;
             }
           }
         }
-        tiles.push({ row: r, col: c, x0, y0, w, h, mask: m, pieces, labelled, widthMM: w * p, heightMM: h * p });
+        tiles.push({ row: r, col: c, x0, y0, w, h, mask: m, pieces, labelled, labels, widthMM: w * p, heightMM: h * p });
       }
     }
     return { nx, ny, cutX, cutY, tiles, knobs, assign, gap, bareSeams };
@@ -782,15 +781,15 @@
 
   const SEG = { 0: 'abcdef', 1: 'bc', 2: 'abged', 3: 'abgcd', 4: 'fgbc', 5: 'afgcd', 6: 'afgedc', 7: 'abc', 8: 'abcdefg', 9: 'abcdfg', '-': 'g' };
 
-  function numberRects(text) {
-    const cw = 4, ch = 6, t = 0.8, g = 0.45, space = 1.2;
+  function numberRects(text, k = 1) {
+    const cw = 4 * k, ch = 6 * k, t = 0.8 * k, g = 0.45 * k, space = 1.2 * k;
     const rects = [];
     let x = 0;
     for (const chr of text) {
       const segs = SEG[chr] || '';
       if (chr === '-') {
-        rects.push([x + 0.3, (ch - t) / 2, x + 2.1, (ch + t) / 2]);
-        x += 2.4 + space;
+        rects.push([x + 0.3 * k, (ch - t) / 2, x + 2.1 * k, (ch + t) / 2]);
+        x += 2.4 * k + space;
         continue;
       }
       const R = {
@@ -811,12 +810,11 @@
     return { rects, width: x - space, height: ch };
   }
 
-  // Sucht eine volle Materialfläche (möglichst oben links) und schneidet die Nummer aus.
+  // Sucht eine volle Materialfläche (möglichst oben links) für die Kachelnummer. Die Nummer wird nicht
+  // ausgeschnitten (sonst malt man sie mit), sondern später erhaben auf die Oberseite gedruckt.
+  // Liefert die Ziffern-Rechtecke in mm (Kachel-Koordinaten, y nach unten) und die Pixel für die Vorschau.
+  const LABEL_SCALES = [2, 5 / 3, 4 / 3, 1]; // Ziffernhöhe 12, 10, 8, 6 mm: die größte, die Platz hat
   function stampNumber(m, w, h, p, text, area) {
-    const { rects, width, height } = numberRects(text);
-    const margin = 1.5;
-    const bw = Math.ceil((width + 2 * margin) / p), bh = Math.ceil((height + 2 * margin) / p);
-    if (bw >= w || bh >= h) return null;
     const S = new Int32Array((w + 1) * (h + 1));
     for (let y = 0; y < h; y++) {
       let row = 0;
@@ -825,30 +823,53 @@
         S[(y + 1) * (w + 1) + x + 1] = S[y * (w + 1) + x + 1] + row;
       }
     }
-    const full = bw * bh;
-    const step = Math.max(1, Math.round(0.5 / p));
-    let best = null, bestD = Infinity;
-    for (let y = 0; y + bh <= h; y += step) {
-      for (let x = 0; x + bw <= w; x += step) {
-        if (x + y >= bestD) break;
-        const sum = S[(y + bh) * (w + 1) + x + bw] - S[y * (w + 1) + x + bw] - S[(y + bh) * (w + 1) + x] + S[y * (w + 1) + x];
-        if (sum === full) { best = [x, y]; bestD = x + y; }
-      }
-    }
-    if (!best) return null;
-    const ox = best[0] * p + margin, oy = best[1] * p + margin;
-    const cut = [];
-    for (const [a, b, c, d] of rects) {
-      for (let y = Math.floor((oy + b) / p); y < Math.ceil((oy + d) / p); y++) {
-        for (let x = Math.floor((ox + a) / p); x < Math.ceil((ox + c) / p); x++) {
-          const cxm = (x + 0.5) * p, cym = (y + 0.5) * p;
-          if (cxm < ox + a || cxm > ox + c || cym < oy + b || cym > oy + d) continue;
-          const k = y * w + x;
-          if (m[k]) { m[k] = 0; cut.push(k); }
+    for (const k of LABEL_SCALES) {
+      const { rects, width, height } = numberRects(text, k);
+      const margin = 1.5;
+      const bw = Math.ceil((width + 2 * margin) / p), bh = Math.ceil((height + 2 * margin) / p);
+      if (bw >= w || bh >= h) continue;
+      const full = bw * bh;
+      const step = Math.max(1, Math.round(0.5 / p));
+      let best = null, bestD = Infinity;
+      for (let y = 0; y + bh <= h; y += step) {
+        for (let x = 0; x + bw <= w; x += step) {
+          if (x + y >= bestD) break;
+          const sum = S[(y + bh) * (w + 1) + x + bw] - S[y * (w + 1) + x + bw] - S[(y + bh) * (w + 1) + x] + S[y * (w + 1) + x];
+          if (sum === full) { best = [x, y]; bestD = x + y; }
         }
       }
+      if (!best) continue;
+      const ox = best[0] * p + margin, oy = best[1] * p + margin;
+      const boxes = rects.map(([a, b, c, d]) => [ox + a, oy + b, ox + c, oy + d]);
+      const pixels = [];
+      for (const [a, b, c, d] of boxes) {
+        for (let y = Math.floor(b / p); y < Math.ceil(d / p); y++) {
+          for (let x = Math.floor(a / p); x < Math.ceil(c / p); x++) {
+            const cxm = (x + 0.5) * p, cym = (y + 0.5) * p;
+            if (cxm >= a && cxm <= c && cym >= b && cym <= d) pixels.push(y * w + x);
+          }
+        }
+      }
+      return { boxes, pixels };
     }
-    return cut;
+    return null;
+  }
+
+  // Quader für die erhabene Kachelnummer (mm, y wie im Netz nach oben, daher an der Kachelhöhe gespiegelt)
+  function boxesToTriangles(boxes, tileH, z0, z1) {
+    const out = [];
+    const quad = (a, b, c, d) => out.push(...a, ...b, ...c, ...a, ...c, ...d);
+    for (const [x0, yt, x1, yb] of boxes) {
+      const y0 = tileH - yb, y1 = tileH - yt;
+      const v = (x, y, z) => [x, y, z];
+      quad(v(x0, y0, z0), v(x0, y1, z0), v(x1, y1, z0), v(x1, y0, z0)); // unten
+      quad(v(x0, y0, z1), v(x1, y0, z1), v(x1, y1, z1), v(x0, y1, z1)); // oben
+      quad(v(x0, y0, z0), v(x1, y0, z0), v(x1, y0, z1), v(x0, y0, z1));
+      quad(v(x1, y0, z0), v(x1, y1, z0), v(x1, y1, z1), v(x1, y0, z1));
+      quad(v(x1, y1, z0), v(x0, y1, z0), v(x0, y1, z1), v(x1, y1, z1));
+      quad(v(x0, y1, z0), v(x0, y0, z0), v(x0, y0, z1), v(x0, y1, z1));
+    }
+    return out;
   }
 
   // ---------------------------------------------------------------------------
@@ -1163,7 +1184,7 @@
   }
 
   return {
-    buildStencil, prepareStencil, finishStencil, planTiles, makeTiles, maskToTriangles, trianglesToSTL,
+    buildStencil, prepareStencil, finishStencil, planTiles, makeTiles, maskToTriangles, boxesToTriangles, trianglesToSTL,
     // für Tests
     paintLoss,
     _internal: { opening, erode, dilate, label, fixDiagonals, traceLoops, simplifyClosed, signedArea, addBridges },
