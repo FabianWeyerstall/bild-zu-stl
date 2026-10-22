@@ -692,8 +692,18 @@
       }
     }
 
-    // Kein Spalt im Raster: Das Spiel entsteht genauer beim Netz (maskToTriangles, shrinkMM = halbes Spiel je Kachel)
+    // Kein Spalt im Raster: Das Spiel entsteht genauer beim Netz (maskToTriangles, shrinkMM = halbes Spiel je Kachel).
+    // gap markiert die Fugen nur noch für die Vorschau (ein Pixel auf Seite der höheren Kachelnummer).
     const gap = new Uint8Array(W * H);
+    if (nx * ny > 1) {
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          const i = y * W + x, a = assign[i];
+          if ((x > 0 && assign[i - 1] < a) || (x < W - 1 && assign[i + 1] < a) ||
+              (y > 0 && assign[i - W] < a) || (y < H - 1 && assign[i + W] < a)) gap[i] = 1;
+        }
+      }
+    }
 
     const tiles = [];
     for (let r = 0; r < ny; r++) {
@@ -716,7 +726,7 @@
         for (let y = 0; y < h; y++) {
           for (let x = 0; x < w; x++) {
             const i = (y + y0) * W + (x + x0);
-            allowed[y * w + x] = !gap[i] && assign[i] === t ? 1 : 0;
+            allowed[y * w + x] = assign[i] === t ? 1 : 0;
             m[y * w + x] = mat[i] && allowed[y * w + x] ? 1 : 0;
           }
         }
