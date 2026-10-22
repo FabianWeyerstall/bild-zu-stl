@@ -692,28 +692,8 @@
       }
     }
 
-    // Spalt zwischen den Kacheln (immer auf Seite der höheren Kachelnummer)
-    const gapPx = Math.max(1, Math.round(opts.clearanceMM / p));
+    // Kein Spalt im Raster: Das Spiel entsteht genauer beim Netz (maskToTriangles, shrinkMM = halbes Spiel je Kachel)
     const gap = new Uint8Array(W * H);
-    if (nx * ny > 1) {
-      for (let y = 0; y < H; y++) {
-        for (let x = 0; x < W; x++) {
-          const i = y * W + x, a = assign[i];
-          if ((x > 0 && assign[i - 1] < a) || (x < W - 1 && assign[i + 1] < a) ||
-              (y > 0 && assign[i - W] < a) || (y < H - 1 && assign[i + W] < a)) gap[i] = 1;
-        }
-      }
-      for (let g = 1; g < gapPx; g++) {
-        const add = [];
-        for (let i = 0; i < W * H; i++) {
-          if (gap[i]) continue;
-          const x = i % W, a = assign[i];
-          if ((x > 0 && gap[i - 1] && assign[i - 1] === a) || (x < W - 1 && gap[i + 1] && assign[i + 1] === a) ||
-              (i >= W && gap[i - W] && assign[i - W] === a) || (i < W * H - W && gap[i + W] && assign[i + W] === a)) add.push(i);
-        }
-        for (const i of add) gap[i] = 1;
-      }
-    }
 
     const tiles = [];
     for (let r = 0; r < ny; r++) {
@@ -1029,7 +1009,31 @@
 
   // Trianguliert eine Komponente (Außenkontur + Löcher) zu einem geschlossenen Körper.
   // Liefert null, wenn das Ergebnis nicht wasserdicht wäre.
-  function triangulateComponent(polys, p, H, latticeFix) {
+  // Jede Ecke um d nach links (= ins Material, Außenkontur positiv, Löcher negativ orientiert) verschieben
+  function offsetLoops(flat, starts, loops, d) {
+    const out = flat.slice();
+    for (let k = 0; k < loops.length; k++) {
+      const s0 = starts[k], n = loops[k].length / 2;
+      for (let i = 0; i < n; i++) {
+        const a = s0 + (i + n - 1) % n, b = s0 + i, c = s0 + (i + 1) % n;
+        let ux = flat[2 * b] - flat[2 * a], uy = flat[2 * b + 1] - flat[2 * a + 1];
+        let vx = flat[2 * c] - flat[2 * b], vy = flat[2 * c + 1] - flat[2 * b + 1];
+        const lu = Math.hypot(ux, uy) || 1, lv = Math.hypot(vx, vy) || 1;
+        ux /= lu; uy /= lu; vx /= lv; vy /= lv;
+        let mx = -uy - vy, my = ux + vx;
+        const lm = Math.hypot(mx, my);
+        if (lm < 1e-6) { mx = -uy; my = ux; } else { mx /= lm; my /= lm; }
+        const f = d / Math.max(0.5, mx * -uy + my * ux);
+        out[2 * b] += mx * f;
+        out[2 * b + 1] += my * f;
+      }
+    }
+    return out;
+  }
+
+  const offsetPoly = (pts, d) => offsetLoops(pts, [0], [pts], d);
+
+  function triangulateComponent(polys, p, H, latticeFix, shrink) {
     let oi = 0, best = -Infinity;
     polys.forEach((pl, i) => { const a = signedArea(pl); if (a > best) { best = a; oi = i; } });
     if (best <= 0) return [];
@@ -1074,8 +1078,15 @@
       const a = Math.floor(k / (2 * nv)), b = k - a * 2 * nv;
       if (cnt !== 1 || edges.get(b * 2 * nv + a) !== 1) return null;
     }
+    // Kanten um shrink Pixel ins Material versetzen (Spiel der Puzzle-Verbinder, auch unter einem Pixel).
+    // Die Triangulierung bleibt, nur die Punkte wandern; kippt dabei ein Dreieck, wird der Versatz halbiert.
+    let pos = flat;
+    for (let d = shrink || 0; d > 0.01; d /= 2) {
+      const moved = offsetLoops(flat, starts, ordered, d);
+      if (tri.every(([a, b, c]) => Math.sign(cross(moved, a, b, c)) === Math.sign(cross(flat, a, b, c)))) { pos = moved; break; }
+    }
     const out = [];
-    const P = (v) => (v < nv ? [flat[2 * v] * p, flat[2 * v + 1] * p, 0] : [flat[2 * (v - nv)] * p, flat[2 * (v - nv) + 1] * p, H]);
+    const P = (v) => (v < nv ? [pos[2 * v] * p, pos[2 * v + 1] * p, 0] : [pos[2 * (v - nv)] * p, pos[2 * (v - nv) + 1] * p, H]);
     for (const [a, b, c] of faces) out.push(...P(a), ...P(b), ...P(c));
     return out;
   }
@@ -1084,7 +1095,8 @@
    * smooth: Konturen glätten (sonst exakte Pixelkanten). Wenn eine geglättete
    * Komponente nicht sauber trianguliert, wird für sie die Pixelkontur verwendet.
    */
-  function maskToTriangles(m, w, h, p, heightMM, tolPx, smooth) {
+  function maskToTriangles(m, w, h, p, heightMM, tolPx, smooth, shrinkMM) {
+    const shrink = (shrinkMM || 0) / p;
     const comps = traceLoops(m, w, h);
     const tris = [];
     let fallbacks = 0;
@@ -1096,7 +1108,7 @@
           const a0 = signedArea(l.pts), a1 = signedArea(sm);
           return Math.sign(a0) === Math.sign(a1) && Math.abs(a1 - a0) < 0.2 * Math.abs(a0) + 2 ? sm : null;
         });
-        if (polys.every(Boolean)) res = triangulateComponent(polys, p, heightMM, false);
+        if (polys.every(Boolean)) res = triangulateComponent(shrink ? polys.map((q) => offsetPoly(q, shrink)) : polys, p, heightMM, false);
         if (!res) fallbacks++;
       }
       if (!res) {
@@ -1105,7 +1117,9 @@
           const a0 = signedArea(l.pts), a1 = signedArea(sm);
           return Math.sign(a0) === Math.sign(a1) && Math.abs(a1) > 0.25 * Math.abs(a0) ? sm : l.pts;
         });
-        res = triangulateComponent(polys, p, heightMM, true) || [];
+        // mit Spiel: versetzte Pixelkontur ohne Gitter-Korrektur, sonst Gitter und Versatz erst am Netz
+        if (shrink) res = triangulateComponent(polys.map((q) => offsetPoly(q, shrink)), p, heightMM, false);
+        if (!res) res = triangulateComponent(polys, p, heightMM, true, shrink) || [];
       }
       for (const v of res) tris.push(v);
     }

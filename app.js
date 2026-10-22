@@ -53,7 +53,7 @@
       bridgeMM: Math.max(0.8, num(ui.bridge, 2)),
       cornerMM: Math.max(0, num(ui.corner, 1)),
       maxTileMM: Math.min(tileLimit(), Math.max(60, num(ui.maxTile, 240))),
-      clearanceMM: Math.max(0.05, num(ui.clearance, 0.2)),
+      clearanceMM: Math.max(0, num(ui.clearance, 0.1)),
     };
     const totalW = s.widthMM + 2 * s.borderMM, totalH = s.heightMM + 2 * s.borderMM;
     const finest = Math.min(s.markerMM, s.minStegMM, s.bridgeMM);
@@ -364,6 +364,7 @@
     let data = null;
     try { data = JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (e) { data = null; }
     if (!data) return;
+    if (data.clearance === '0.2') data.clearance = '0.1'; // alter Standard, seit dem Testdruck 0,1 mm
     for (const el of storable()) {
       const v = data[key(el)];
       if (v === undefined) continue;
@@ -673,7 +674,7 @@
         const t = tiles.tiles[k];
         setStatus(tr(`Erzeuge Kachel ${k + 1} von ${tiles.tiles.length} …`, `Creating tile ${k + 1} of ${tiles.tiles.length} …`));
         await new Promise((r) => setTimeout(r, 15));
-        const tris = Stencil.maskToTriangles(t.mask, t.w, t.h, st.px, s.thickness, 0.7, $('vector').checked);
+        const tris = Stencil.maskToTriangles(t.mask, t.w, t.h, st.px, s.thickness, 0.7, $('vector').checked, single ? 0 : s.clearanceMM / 2);
         parts.push({ name: single ? imageName : tileName(t), tris, width: t.widthMM, height: t.heightMM });
       }
       if (as3mf) {
