@@ -212,3 +212,4 @@ html[lang="en"] [data-only="de"], html:not([lang="en"]) [data-only="en"] { displ
 .stepNav { position: absolute; top: calc(50% - 40px); width: 36px; height: 36px; padding: 0; border-radius: 50%; border: none; background: rgba(0,0,0,.55); color: #fff; font-size: 1.4rem; line-height: 1; cursor: pointer; }
 .stepNav.prev { left: 6px; } .stepNav.next { right: 6px; }
 .stepNav:hover { background: rgba(0,0,0,.75); }
+#pdf { width: 100%; margin-top: 8px; padding: 8px 12px; }

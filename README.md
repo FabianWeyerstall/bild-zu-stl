@@ -42,6 +42,7 @@ Kostenlos, ohne Konto. Alles läuft im Browser, deine Bilder werden nirgendwo ho
 - **Beispielbilder:** Unter „1. Bild“ gibt es zehn eigene Motive (Halloween, für Kinder, Sterne & Winter) zum Ausprobieren ohne eigenes Bild. Sie liegen in `examples/` und dürfen frei verwendet werden.
 - **Breite Linien verschmälern** (Abschnitt 3, „Stift“): Wird ein Bild groß skaliert, werden auch seine Linien dick. Die App erkennt die übliche Linienstärke im Bild und zieht diese Linien auf Markerbreite + 0,5 mm zusammen. Deutlich dickere, ausgemalte Formen (Gesichter, Fledermäuse, Ringe) bleiben unverändert.
 - **Stege bearbeiten:** Klick auf einen Steg setzt ihn an die nächstbeste Stelle, Ziehen von Kante zu Kante setzt einen eigenen Steg.
+- **Plan als PDF:** Zusätzlich zum 3MF gibt es ein PDF zum Ausdrucken: Seite 1 das Originalbild mit Maßen, Seite 2 der Puzzle- und Schnittplan mit allen Kacheln, Seite 3 die Stellen, die man nach dem Abnehmen von Hand nachmalt (Haltestege rot eingekreist, zu schmale Linien orange).
 - **Klebelaschen** am Außenrand zum Festkleben mit Malerkrepp (optional, standardmäßig aus).
 - **Große Bilder** werden in Kacheln aufgeteilt, die auf die Druckplatte passen (Drucker wählbar: X1C/X1E/P1S/P1P/P2S und A1 mit 256 × 256 mm, A1 mini mit 180 × 180 mm, H2S und H2D; die Kachel ist die kürzere Bettseite minus 16 mm, beim H2D zählt der Bereich beider Düsen). Die Kacheln sind gleich groß; optional („Kachelschnitte an Linien ausrichten“ unter „Erweitert“) dürfen die Schnitte bis 20 % wandern, damit sie möglichst wenige Linien kreuzen. Die Kacheln haben Puzzle-Verbinder und werden als 3MF-Projekt (eine Platte pro Kachel) oder als ZIP mit einer STL pro Kachel exportiert.
 
@@ -62,7 +63,7 @@ Reines HTML/JavaScript ohne Build-Schritt. Die Kernlogik liegt in `stencil.js`, 
 node test/test.js   # prüft u. a., dass alle erzeugten Netze geschlossen sind
 ```
 
-Verwendete Bibliotheken (im Ordner `vendor/`): [earcut](https://github.com/mapbox/earcut) (ISC) und [JSZip](https://github.com/Stuk/jszip) (MIT).
+Verwendete Bibliotheken (im Ordner `vendor/`): [earcut](https://github.com/mapbox/earcut) (ISC), [JSZip](https://github.com/Stuk/jszip) (MIT) und [jsPDF](https://github.com/parallax/jsPDF) (MIT, wird erst beim PDF-Export geladen).
 
 ## Lizenz
 

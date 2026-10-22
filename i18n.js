@@ -71,6 +71,7 @@
     '3MF für Bambu Studio, jede Kachel auf eigener Platte': '3MF for Bambu Studio, each tile on its own plate',
     'STL (ZIP bei mehreren Kacheln)': 'STL (ZIP for several tiles)',
     'Exportieren': 'Export',
+    'Plan als PDF (Vorlage, Puzzle-Plan, Stellen zum Nachmalen)': 'Plan as PDF (original, puzzle plan, spots to touch up)',
     'Noch kein Bild geladen.': 'No image loaded yet.',
     'Original überlagern': 'Overlay original',
     'Schablone': 'Stencil',

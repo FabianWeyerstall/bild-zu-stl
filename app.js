@@ -10,7 +10,7 @@
     thin: $('thin'), threshold: $('threshold'), thresholdOut: $('thresholdOut'),
     invert: $('invert'), smooth: $('smooth'),
     minSteg: $('minSteg'), corner: $('corner'), bridge: $('bridge'), maxTile: $('maxTile'), clearance: $('clearance'),
-    exportBtn: $('export'), status: $('status'), info: $('info'),
+    exportBtn: $('export'), pdfBtn: $('pdf'), status: $('status'), info: $('info'),
     overlay: $('overlay'), canvas: $('canvas'), empty: $('empty'),
     tabs: $('tabs'), drag: $('drag'), resetEdits: $('resetEdits'), busy: $('busy'), busyText: $('busyText'),
   };
@@ -27,7 +27,8 @@
   let pending = false;
   let baseKey = ''; // Grundeinstellungen, mit denen der Rechner zuletzt vorbereitet wurde
   // Rechnen im Hintergrund: ein Worker für Vorschau und Export, einer für die Malbarkeit
-  const WORKER_URL = 'jobs.js' + ((document.querySelector('script[src^="app.js"]') || {}).src || '').replace(/^[^?]*/, '');
+  const VERSION = ((document.querySelector('script[src^="app.js"]') || {}).src || '').replace(/^[^?]*/, '');
+  const WORKER_URL = 'jobs.js' + VERSION;
   const calc = StencilJobs.runner(WORKER_URL);
   const calcLoss = StencilJobs.runner(WORKER_URL);
   // Änderungen an Stegen, relativ zur Bildfläche (0..1), damit sie Größenänderungen überstehen
@@ -459,6 +460,7 @@
     if (running) { pending = true; return; }
     running = true;
     ui.exportBtn.disabled = true;
+    ui.pdfBtn.disabled = true;
     setStatus(tr('Berechne Vorschau …', 'Calculating preview …'));
     await new Promise((r) => setTimeout(r, 30));
     try {
@@ -476,6 +478,7 @@
       render();
       describe(performance.now() - t0);
       ui.exportBtn.disabled = false;
+      ui.pdfBtn.disabled = false;
     } catch (err) {
       console.error(err);
       setStatus(tr('Fehler bei der Berechnung: ', 'Calculation error: ') + err.message);
@@ -606,10 +609,11 @@
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
   }
 
-  function render() {
+  function render() { drawStencil(ui.canvas, ui.overlay.checked); }
+
+  function drawStencil(cv, overlay) {
     const { st, tiles } = result;
     const { W, H, mat, holes0, bridgeMask, border } = st;
-    const cv = ui.canvas;
     cv.width = W;
     cv.height = H;
     const ctx = cv.getContext('2d');
@@ -630,7 +634,7 @@
       d[4 * i + 3] = !mat[i] && !st.area[i] ? 0 : 255;
     }
     ctx.putImageData(img, 0, 0);
-    if (ui.overlay.checked && image) {
+    if (overlay && image) {
       ctx.globalAlpha = 0.35;
       ctx.drawImage(image, border, border, W - 2 * border, H - 2 * border);
       ctx.globalAlpha = 1;
@@ -714,6 +718,159 @@
     ui.exportBtn.disabled = false;
   });
 
+  // --- Plan als PDF: Originalbild, Puzzle-/Schnittplan, Stellen zum Nachmalen ---------
+
+  let jspdfLoad = null;
+  const loadJsPDF = () => jspdfLoad || (jspdfLoad = new Promise((resolve, reject) => {
+    if (self.jspdf) { resolve(self.jspdf); return; }
+    const sc = document.createElement('script');
+    sc.src = 'vendor/jspdf.umd.min.js' + VERSION;
+    sc.onload = () => resolve(self.jspdf);
+    sc.onerror = () => { jspdfLoad = null; reject(new Error(tr('PDF-Bibliothek konnte nicht geladen werden.', 'Could not load the PDF library.'))); };
+    document.head.appendChild(sc);
+  }));
+
+  // Canvas verkleinern (für eine handliche PDF-Größe) und als JPEG liefern
+  function jpeg(cv, maxSide = 2400) {
+    const k = Math.min(1, maxSide / Math.max(cv.width, cv.height));
+    const out = document.createElement('canvas');
+    out.width = Math.max(1, Math.round(cv.width * k));
+    out.height = Math.max(1, Math.round(cv.height * k));
+    const ctx = out.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, out.width, out.height);
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(cv, 0, 0, out.width, out.height);
+    return { url: out.toDataURL('image/jpeg', 0.88), w: out.width, h: out.height };
+  }
+
+  // Wo man nach dem Abnehmen von Hand nacharbeiten muss: Haltestege (rot) und zu schmale Linien (orange)
+  function touchUpCanvas() {
+    const { st } = result;
+    const { W, H, mat, holes0, bridgeMask, border } = st;
+    const cv = document.createElement('canvas');
+    cv.width = W;
+    cv.height = H;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 0.4;
+    ctx.drawImage(image, border, border, W - 2 * border, H - 2 * border);
+    ctx.globalAlpha = 1;
+    const marks = document.createElement('canvas');
+    marks.width = W;
+    marks.height = H;
+    const mctx = marks.getContext('2d');
+    const img = mctx.createImageData(W, H);
+    const d = img.data;
+    const lost = cssColor('--lost'), bridge = cssColor('--bridge');
+    for (let i = 0; i < W * H; i++) {
+      if (!mat[i] || !holes0[i]) continue;
+      const c = bridgeMask[i] ? bridge : lost;
+      d[4 * i] = c[0]; d[4 * i + 1] = c[1]; d[4 * i + 2] = c[2]; d[4 * i + 3] = 255;
+    }
+    mctx.putImageData(img, 0, 0);
+    ctx.drawImage(marks, 0, 0);
+    // Kreise um die Stege, damit man sie auch klein ausgedruckt findet
+    ctx.strokeStyle = `rgb(${bridge.join(',')})`;
+    ctx.lineWidth = Math.max(2, Math.min(W, H) / 400);
+    const r = Math.max(8, Math.min(W, H) / 60);
+    for (const b of st.bridges || []) {
+      const [ax, ay, bx, by] = b.seg;
+      ctx.beginPath();
+      ctx.arc((ax + bx) / 2, (ay + by) / 2, r, 0, 2 * Math.PI);
+      ctx.stroke();
+    }
+    return cv;
+  }
+
+  async function buildPDF() {
+    const { st, tiles, s } = result;
+    const { jsPDF } = await loadJsPDF();
+    const landscape = st.W > st.H * 1.15;
+    const doc = new jsPDF({ orientation: landscape ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
+    const PW = doc.internal.pageSize.getWidth(), PH = doc.internal.pageSize.getHeight(), M = 14;
+    const multi = tiles.tiles.length > 1;
+    const header = (title, sub) => {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(17);
+      doc.text(title, M, M + 4);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(90);
+      doc.text(sub, M, M + 10);
+      doc.setTextColor(0);
+      return M + 16;
+    };
+    // Bild in den freien Bereich einpassen, Textzeilen darunter
+    const page = (title, sub, pic, notes) => {
+      const top = header(title, sub);
+      doc.setFontSize(10);
+      const text = notes.flatMap((n) => doc.splitTextToSize(n, PW - 2 * M));
+      const textH = text.length * 4.6;
+      const boxW = PW - 2 * M, boxH = PH - top - M - textH - 4;
+      const k = Math.min(boxW / pic.w, boxH / pic.h);
+      const w = pic.w * k, h = pic.h * k;
+      doc.addImage(pic.url, 'JPEG', M + (boxW - w) / 2, top, w, h);
+      doc.setDrawColor(200);
+      doc.rect(M + (boxW - w) / 2, top, w, h);
+      doc.text(text, M, top + h + 7);
+    };
+    const size = `${fmt(st.W * st.px)} × ${fmt(st.H * st.px)} mm`;
+    const date = new Date().toLocaleDateString(I18N.lang === 'en' ? 'en-GB' : 'de-DE');
+    const sub = `Stencilio Print · ${imageName} · ${date}`;
+
+    // 1) Originalbild
+    const orig = document.createElement('canvas');
+    orig.width = image.naturalWidth || image.width;
+    orig.height = image.naturalHeight || image.height;
+    orig.getContext('2d').drawImage(image, 0, 0);
+    page(tr('Vorlage', 'Original'), sub, jpeg(orig), [
+      tr(`Gesamtgröße der Schablone: ${size} (mit Rand), Höhe ${fmt(s.thickness, 1)} mm, Marker ${fmt(s.markerMM)} mm.`,
+        `Total stencil size: ${size} (with border), height ${fmt(s.thickness, 1)} mm, marker ${fmt(s.markerMM)} mm.`),
+      multi ? tr(`${tiles.tiles.length} Kacheln (${tiles.ny} Reihen × ${tiles.nx} Spalten), ${st.bridged} Haltestege.`, `${tiles.tiles.length} tiles (${tiles.ny} rows × ${tiles.nx} columns), ${st.bridged} holding bridges.`)
+        : tr(`Eine Druckplatte, ${st.bridged} Haltestege.`, `One build plate, ${st.bridged} holding bridges.`),
+      tr('Seite 2: Puzzle- und Schnittplan. Seite 3: Stellen, die du nach dem Abnehmen von Hand nachmalst.', 'Page 2: puzzle and cutting plan. Page 3: spots to touch up by hand after removing the stencil.'),
+    ]);
+
+    // 2) Puzzle- und Schnittplan
+    doc.addPage();
+    const plan = document.createElement('canvas');
+    drawStencil(plan, false);
+    const list = tiles.tiles.map((t) => `${tileName(t)}: ${fmt(t.widthMM, 1)} × ${fmt(t.heightMM, 1)} mm`).join('   ');
+    page(tr('Puzzle- und Schnittplan', 'Puzzle and cutting plan'), sub, jpeg(plan), multi ? [
+      tr('So gehören die Kacheln zusammen. R = Reihe (von oben), S = Spalte (von links). Die Nummer ist in jede Kachel eingeprägt, z. B. „1-2“ = Reihe 1, Spalte 2. Die Puzzle-Verbinder an den dunklen Fugen ineinander drücken.',
+        'How the tiles fit together. R = row (from the top), C = column (from the left). Each tile has its number pressed in, e.g. "1-2" = row 1, column 2. Press the puzzle connectors at the dark seams together.'),
+      list,
+      tr('Blau: Schablone · Weiß: Öffnung zum Malen · Rot: Haltesteg · Orange: zu schmal, entfällt · Grün: auf Markerbreite verbreitert.', 'Blue: stencil · White: opening to paint · Red: holding bridge · Orange: too narrow, left out · Green: widened to marker width.'),
+    ] : [
+      tr('Blau: Schablone · Weiß: Öffnung zum Malen · Rot: Haltesteg · Orange: zu schmal, entfällt · Grün: auf Markerbreite verbreitert.', 'Blue: stencil · White: opening to paint · Red: holding bridge · Orange: too narrow, left out · Green: widened to marker width.'),
+    ]);
+
+    // 3) Nachmalen
+    doc.addPage();
+    page(tr('Nach dem Malen von Hand ergänzen', 'Touch up by hand after painting'), sub, jpeg(touchUpCanvas()), [
+      tr(`Rot eingekreist: die ${st.bridged} Haltestege. Dort unterbricht die Schablone die Linie, damit Innenteile halten. Nach dem Abnehmen die kurzen Lücken mit dem Stift schließen.`,
+        `Red circles: the ${st.bridged} holding bridges. The stencil interrupts the line there so inner parts stay attached. After removing the stencil, close these short gaps with your marker.`),
+      tr('Orange: Linien, die für den Marker zu schmal waren und nicht in der Schablone sind. Bei Bedarf frei Hand ergänzen.', 'Orange: lines that were too narrow for the marker and are not in the stencil. Add them freehand if you like.'),
+    ]);
+    return doc.output('blob');
+  }
+
+  ui.pdfBtn.addEventListener('click', async () => {
+    if (!result) return;
+    ui.pdfBtn.disabled = true;
+    setStatus(tr('PDF wird erzeugt …', 'Creating PDF …'));
+    try {
+      download(await buildPDF(), `${imageName}-${tr('plan', 'plan')}.pdf`);
+      setStatus(tr('PDF heruntergeladen.', 'PDF downloaded.'));
+    } catch (err) {
+      console.error(err);
+      setStatus(tr('PDF konnte nicht erzeugt werden: ', 'Could not create the PDF: ') + err.message);
+    }
+    ui.pdfBtn.disabled = false;
+  });
+
   function instructions(tiles, st, s) {
     const lines = I18N.lang === 'en' ? [
       'Stencilio Print - stencil',
@@ -721,7 +878,7 @@
       `Total size: ${fmt(st.W * st.px)} x ${fmt(st.H * st.px)} mm, height ${fmt(s.thickness, 1)} mm, marker ${fmt(s.markerMM)} mm`,
       `Tiles: ${tiles.ny} rows x ${tiles.nx} columns. R = row (from the top), C = column (from the left).`,
       'The position of each tile is shown in overview.png.',
-      'Each tile has its number as a small cut-out: "1-2" means row 1, column 2.',
+      'Each tile has its number pressed into the top: "1-2" means row 1, column 2.',
       '',
       'Printing (Bambu Studio):',
       '- Place each STL on the plate on its own or several together.',
@@ -735,7 +892,7 @@
       `Gesamtgröße: ${fmt(st.W * st.px)} x ${fmt(st.H * st.px)} mm, Höhe ${fmt(s.thickness, 1)} mm, Marker ${fmt(s.markerMM)} mm`,
       `Kacheln: ${tiles.ny} Reihen x ${tiles.nx} Spalten. R = Reihe (von oben), S = Spalte (von links).`,
       'Die Lage jeder Kachel siehst du in uebersicht.png.',
-      'Jede Kachel hat ihre Nummer als kleinen Ausschnitt: "1-2" heißt Reihe 1, Spalte 2.',
+      'Jede Kachel hat ihre Nummer in die Oberseite eingeprägt: "1-2" heißt Reihe 1, Spalte 2.',
       '',
       'Drucken (Bambu Studio):',
       '- Jede STL einzeln oder mehrere zusammen auf die Platte legen.',
