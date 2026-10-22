@@ -46,7 +46,7 @@
       widthMM: Math.max(20, num(ui.width, 400)),
       heightMM: Math.max(20, num(ui.height, 300)),
       borderMM: Math.max(0, num(ui.border, 10)),
-      tabMM: ui.tabs.checked ? 12 : 0,
+      tabMM: ui.tabs.checked && !$('saveMaterial').checked ? 12 : 0,
       thickness: radio('thick'),
       markerMM: radio('marker'),
       widenThin: ui.thin.value === 'widen',
@@ -60,6 +60,7 @@
       maxTileMM: Math.min(tileLimit(), Math.max(60, num(ui.maxTile, 240))),
       clearanceMM: Math.max(0, num(ui.clearance, 0.1)),
       alignCuts: $('alignCuts').checked,
+      saveMaterial: $('saveMaterial').checked,
     };
     const totalW = s.widthMM + 2 * s.borderMM, totalH = s.heightMM + 2 * s.borderMM;
     const finest = Math.min(s.markerMM, s.minStegMM, s.bridgeMM);
@@ -437,8 +438,11 @@
   });
   syncPlates();
   const syncThinHint = () => { $('thinHint').hidden = radio('thick') > 0.25; };
+  const syncSaveHint = () => { $('saveHint').hidden = !$('saveMaterial').checked; };
+  $('saveMaterial').addEventListener('change', syncSaveHint);
   document.querySelectorAll('input[name=thick]').forEach((el) => el.addEventListener('change', syncThinHint));
   syncThinHint();
+  syncSaveHint();
 
   // --- Berechnung ---------------------------------------------------------
 
@@ -650,7 +654,7 @@
       else if (mat[i]) c = holes0[i] ? C.lost : C.mat;
       else c = holes0[i] ? C.hole : C.added;
       d[4 * i] = c[0]; d[4 * i + 1] = c[1]; d[4 * i + 2] = c[2];
-      d[4 * i + 3] = !mat[i] && !st.area[i] ? 0 : 255;
+      d[4 * i + 3] = !mat[i] && (!st.area[i] || (st.cut && st.cut[i])) ? 0 : 255;
     }
     ctx.putImageData(img, 0, 0);
     if (overlay && image) {

@@ -64,6 +64,8 @@
     'Max. Kachelgröße (mm)': 'Max. tile size (mm)',
     'Spiel der Puzzle-Verbinder (mm)': 'Puzzle connector clearance (mm)',
     'Kachelschnitte an Linien ausrichten (Kacheln dann unterschiedlich groß)': 'Align tile cuts with lines (tiles then differ in size)',
+    'Material sparen (experimentell)': 'Save material (experimental)',
+    'Der Umriss folgt dem Motiv (12 mm voller Rand um alle Öffnungen), große leere Flächen werden zu Waben. Klebelaschen entfallen dabei.': 'The outline follows the motif (12 mm solid rim around all openings), large empty areas become a honeycomb. Tabs are left out.',
     'Wird bei der Druckerauswahl gesetzt: kürzere Bettseite minus 16 mm Rand (X1C/P1: 236 mm wegen der gesperrten Ecke vorne links).':
       'Set by the printer choice: shorter bed side minus a 16 mm margin (X1C/P1: 236 mm because of the excluded front-left corner).',
     'Deine Einstellungen werden in diesem Browser gespeichert.': 'Your settings are saved in this browser.',

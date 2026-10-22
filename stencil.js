@@ -566,6 +566,14 @@
       manual.push([ax, ay, bx, by]);
     }
 
+    // Material sparen (experimentell): Außenkontur folgt dem Motiv statt dem Rechteck.
+    // cut markiert alles, was dabei (und später durch die Waben) wegfällt, für die Vorschau.
+    const cut = new Uint8Array(W * H);
+    if (opts.saveMaterial) {
+      const shape = motifShape(mat, area, W, H, p);
+      for (let i = 0; i < W * H; i++) if (!shape[i] && mat[i]) { mat[i] = 0; cut[i] = 1; }
+    }
+
     // 3) Inseln mit Haltestegen anbinden
     const res = addBridges(mat, W, H, radius, area, (edits && edits.removed) || [], radius + 3 / p, bridgeMask,
       opts.extraBridges === false ? null : { perPx: 120 / p, minPerimPx: 40 / p });
@@ -577,10 +585,70 @@
     fixDiagonals(mat, W, H, true);
 
     return {
-      W, H, px: p, border: base.border, tab: base.tab, area, removed: (edits && edits.removed) || [], markMask: new Uint8Array(W * H), mat, holes0: base.holes0, bridgeMask,
+      W, H, px: p, border: base.border, tab: base.tab, area, removed: (edits && edits.removed) || [], markMask: new Uint8Array(W * H), mat, cut, holes0: base.holes0, bridgeMask,
       bridged: res.bridged + manual.length, loose: res.loose,
       bridges: res.segments.map((sg) => ({ seg: sg, manual: false })).concat(manual.map((sg) => ({ seg: sg, manual: true }))),
     };
+  }
+
+  // Umriss der Schablone beim Materialsparen: SAVE.rimMM voller Rand um alle Öffnungen,
+  // Buchten bis 2 × SAVE.closeMM geschlossen, eingeschlossene Lücken gefüllt. Liegen Motivteile
+  // weit auseinander, verbinden breite gerade Streifen sie zu einem Teil.
+  const SAVE = { rimMM: 12, closeMM: 20, linkMM: 10, keepMM: 7, pitchMM: 12, wallMM: 2.4 };
+  function motifShape(mat, area, W, H, p) {
+    const holes = new Uint8Array(W * H);
+    let any = false;
+    for (let i = 0; i < W * H; i++) if (area[i] && !mat[i]) { holes[i] = 1; any = true; }
+    if (!any) return area.slice();
+    const shape = closing(dilate(holes, W, H, SAVE.rimMM / p), W, H, SAVE.closeMM / p);
+    // Lücken ohne Verbindung nach außen füllen
+    const bg = new Uint8Array(W * H);
+    for (let i = 0; i < W * H; i++) bg[i] = shape[i] ? 0 : 1;
+    const { lab, n } = label(bg, W, H);
+    const outside = new Uint8Array(n + 1);
+    for (let x = 0; x < W; x++) { outside[lab[x]] = 1; outside[lab[(H - 1) * W + x]] = 1; }
+    for (let y = 0; y < H; y++) { outside[lab[y * W]] = 1; outside[lab[y * W + W - 1]] = 1; }
+    for (let i = 0; i < W * H; i++) if (bg[i] && !outside[lab[i]]) shape[i] = 1;
+    addBridges(shape, W, H, SAVE.linkMM / p / 2, area, null, 0, null, null);
+    for (let i = 0; i < W * H; i++) if (!area[i]) shape[i] = 0;
+    return shape;
+  }
+
+  // Wabenmuster in vollen Flächen einer Kachel: nur ganze Waben, mindestens SAVE.keepMM von
+  // Öffnungen, Kachelrand, Verbindern und Nummer entfernt. Raster in globalen Koordinaten (ox, oy),
+  // damit es über Kachelgrenzen gleich bleibt. Gibt die entfernten Pixel zurück.
+  function honeycomb(m, w, h, p, ox, oy, labels) {
+    const free = m.slice();
+    for (const k of labels || []) free[k] = 0;
+    for (let x = 0; x < w; x++) { free[x] = 0; free[(h - 1) * w + x] = 0; }
+    for (let y = 0; y < h; y++) { free[y * w] = 0; free[y * w + w - 1] = 0; }
+    const D = sqDist(free, w, h, 0);
+    const P = SAVE.pitchMM / p, ri = (SAVE.pitchMM - SAVE.wallMM) / 2 / p, rc = (ri * 2) / Math.sqrt(3);
+    const need = SAVE.keepMM / p + rc;
+    const need2 = need * need;
+    const rowH = (P * Math.sqrt(3)) / 2;
+    const s3 = Math.sqrt(3) / 2;
+    const removed = [];
+    const r0 = Math.floor(oy / rowH) - 1, r1 = Math.ceil((oy + h) / rowH) + 1;
+    for (let row = r0; row <= r1; row++) {
+      const cy = row * rowH - oy;
+      const shift = (row & 1) ? P / 2 : 0;
+      const c0 = Math.floor((ox - shift) / P) - 1, c1 = Math.ceil((ox + w - shift) / P) + 1;
+      for (let col = c0; col <= c1; col++) {
+        const cx = col * P + shift - ox;
+        const ix = Math.round(cx), iy = Math.round(cy);
+        if (ix < 0 || iy < 0 || ix >= w || iy >= h || D[iy * w + ix] < need2) continue;
+        for (let y = Math.max(0, Math.floor(cy - rc)); y <= Math.min(h - 1, Math.ceil(cy + rc)); y++) {
+          for (let x = Math.max(0, Math.floor(cx - rc)); x <= Math.min(w - 1, Math.ceil(cx + rc)); x++) {
+            const dx = x + 0.5 - cx, dy = y + 0.5 - cy;
+            // Sechseck mit senkrechten Seiten: Abstand zu den drei Seitenpaaren
+            const d = Math.max(Math.abs(dx), Math.abs(dx * 0.5 + dy * s3), Math.abs(dx * 0.5 - dy * s3));
+            if (d < ri && m[y * w + x]) { m[y * w + x] = 0; removed.push(y * w + x); }
+          }
+        }
+      }
+    }
+    return removed;
   }
 
   function boxBlur(src, W, H, r) {
@@ -766,7 +834,7 @@
     }
 
     // Klebelaschen an den Außenkanten, je Kachel mindestens eine pro Außenkante
-    const tm = st.tab || 0;
+    const tm = opts.saveMaterial ? 0 : st.tab || 0;
     if (tm > 0) {
       const tw = (opts.tabWidthMM || 20) / p / 2;
       const rr = Math.min(4 / p, tm / 2, tw);
@@ -845,6 +913,8 @@
             m[y * w + x] = mat[i] && allowed[y * w + x] ? 1 : 0;
           }
         }
+        // Kachel ohne Material (z. B. beim Materialsparen neben dem Motiv) fällt weg
+        if (!m.some((v) => v)) continue;
         // Winzige Splitter entfernen (< 2 mm²), dann abgetrennte Teile innerhalb der Kachel anbinden
         const minArea = 2 / (p * p);
         const pre = label(m, w, h);
@@ -881,6 +951,13 @@
               const x = k % w, y = (k - x) / w;
               st.markMask[(y + y0) * W + (x + x0)] = 1;
             }
+          }
+        }
+        if (opts.saveMaterial) {
+          for (const k of honeycomb(m, w, h, p, x0, y0, labels)) {
+            const x = k % w, y = (k - x) / w;
+            mat[(y + y0) * W + (x + x0)] = 0;
+            if (st.cut) st.cut[(y + y0) * W + (x + x0)] = 1;
           }
         }
         tiles.push({ row: r, col: c, x0, y0, w, h, mask: m, pieces, labelled, labels, widthMM: w * p, heightMM: h * p });

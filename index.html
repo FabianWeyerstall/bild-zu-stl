@@ -17,11 +17,11 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="apple-mobile-web-app-title" content="Stencilio Print">
   <meta name="description" content="Erzeugt aus einem Bild eine 3D-druckbare Schablone zum Nachmalen, für Fenster, Papier, Wände, Stoff und mehr.">
-  <link rel="icon" href="favicon.ico?v=47" sizes="any">
-  <link rel="icon" href="favicon-32.png?v=47" type="image/png" sizes="32x32">
-  <link rel="icon" href="favicon.svg?v=47" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=47">
-  <link rel="stylesheet" href="style.css?v=47">
+  <link rel="icon" href="favicon.ico?v=48" sizes="any">
+  <link rel="icon" href="favicon-32.png?v=48" type="image/png" sizes="32x32">
+  <link rel="icon" href="favicon.svg?v=48" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=48">
+  <link rel="stylesheet" href="style.css?v=48">
 </head>
 <body>
   <header>
@@ -137,6 +137,8 @@
         </fieldset>
         <label>Rand um das Bild (mm)<input type="number" id="border" value="10" min="0" max="100" step="1"></label>
         <label class="check"><input type="checkbox" id="tabs">Klebelaschen am Außenrand</label>
+        <label class="check"><input type="checkbox" id="saveMaterial">Material sparen (experimentell)</label>
+        <p class="hint" id="saveHint" hidden>Der Umriss folgt dem Motiv (12 mm voller Rand um alle Öffnungen), große leere Flächen werden zu Waben. Klebelaschen entfallen dabei.</p>
         <label>Ecken abrunden (mm)<input type="number" id="corner" value="1" min="0" max="5" step="0.1"></label>
         <label class="check"><input type="checkbox" id="vector" checked>Kanten glätten (statt Pixelstufen)</label>
       </section>
@@ -287,17 +289,17 @@
     </div>
   </dialog>
 
-  <script src="vendor/earcut.min.js?v=47"></script>
-  <script src="vendor/jszip.min.js?v=47"></script>
-  <script src="stencil.js?v=47"></script>
-  <script src="vendor/bambu-project-settings.js?v=47"></script>
-  <script src="vendor/bambu-project-settings-a1mini.js?v=47"></script>
-  <script src="vendor/bambu-project-settings-h2d.js?v=47"></script>
-  <script src="vendor/bambu-project-settings-h2s.js?v=47"></script>
-  <script src="threemf.js?v=47"></script>
-  <script src="i18n.js?v=47"></script>
-  <script src="intro.js?v=47"></script>
-  <script src="jobs.js?v=47"></script>
-  <script src="app.js?v=47"></script>
+  <script src="vendor/earcut.min.js?v=48"></script>
+  <script src="vendor/jszip.min.js?v=48"></script>
+  <script src="stencil.js?v=48"></script>
+  <script src="vendor/bambu-project-settings.js?v=48"></script>
+  <script src="vendor/bambu-project-settings-a1mini.js?v=48"></script>
+  <script src="vendor/bambu-project-settings-h2d.js?v=48"></script>
+  <script src="vendor/bambu-project-settings-h2s.js?v=48"></script>
+  <script src="threemf.js?v=48"></script>
+  <script src="i18n.js?v=48"></script>
+  <script src="intro.js?v=48"></script>
+  <script src="jobs.js?v=48"></script>
+  <script src="app.js?v=48"></script>
 </body>
 </html>
