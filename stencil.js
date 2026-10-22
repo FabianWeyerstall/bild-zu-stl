@@ -511,13 +511,16 @@
   // Markerbreite und Mindeststeg verändert (0 = unverändert, 1 = Bild verloren).
   function paintLoss(gray, iw, ih, opts) {
     const st = prepareStencil(gray, iw, ih, { ...opts, borderMM: 0, tabMM: 0 });
-    let orig = 0, diff = 0;
+    // Verlorene Linien zählen voll, auf Markerbreite verbreiterte nur halb: Das Bild wird dann
+    // kräftiger, bleibt aber vollständig malbar (sonst wären z. B. feine Ausmalbilder zu früh gesperrt).
+    let orig = 0, lost = 0, added = 0;
     for (let i = 0; i < st.W * st.H; i++) {
       const want = st.holes0[i], got = !st.mat[i];
       if (want) orig++;
-      if (want !== (got ? 1 : 0)) diff++;
+      if (want && !got) lost++;
+      else if (!want && got) added++;
     }
-    return orig ? Math.min(1, diff / orig) : 0;
+    return orig ? Math.min(1, (lost + 0.5 * added) / orig) : 0;
   }
 
   // Günstiger Teil: Haltestege (inkl. Änderungen von Hand), Ecken abrunden.
