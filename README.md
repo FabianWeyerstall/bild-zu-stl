@@ -28,7 +28,7 @@ Kostenlos, ohne Konto. Alles läuft im Browser, deine Bilder werden nirgendwo ho
 
 - **Öffnungen** schmaler als der Marker werden weggelassen oder auf Markerbreite verbreitert (einstellbar).
 - **Stege** zwischen Öffnungen werden nicht schmaler als die Mindest-Stegbreite (Standard 2 mm).
-- **Inseln** (z. B. das Innere eines „O“) bekommen automatisch einen kurzen, geraden Haltesteg zur nächstgelegenen Kante, genau einen pro Insel.
+- **Inseln** (z. B. das Innere eines „O“) bekommen automatisch kurze, gerade Haltestege zur nächstgelegenen Kante. Kleine Inseln einen, größere Teile (ab 40 mm Umfang) mindestens zwei und je angefangene 120 mm Umfang einen weiteren (höchstens sechs), gleichmäßig verteilt, damit nichts wackelt.
 - **Ecken** werden abgerundet (Standard 1 mm), damit der Marker nirgends hängen bleibt, z. B. dort, wo ein Steg auf eine Linie trifft.
 - **Kanten glätten** (Standard an): Die Konturen werden im Netz als glatte Kurven statt als Pixelstufen ausgegeben. Falls eine Kontur dabei nicht sauber schließt, nimmt die App für dieses Teil automatisch die Pixelkontur.
 - **Leerer Rand** ums Motiv wird beim Laden automatisch abgeschnitten (abschaltbar), damit die Druckfläche fürs eigentliche Bild genutzt wird.

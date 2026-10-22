@@ -236,7 +236,7 @@
    * excluded: Liste [x, y] (Rasterkoordinaten). Stege, die näher als exR an einem
    * dieser Punkte vorbeiführen würden, werden nicht gesetzt (vom Nutzer entfernt).
    */
-  function addBridges(mat, W, H, radius, allowed, excluded, exR, bridgeMask) {
+  function addBridges(mat, W, H, radius, allowed, excluded, exR, bridgeMask, extra) {
     bridgeMask = bridgeMask || new Uint8Array(W * H);
     const segments = [];
     const { lab, n } = label(mat, W, H);
@@ -278,25 +278,93 @@
 
     const disk = diskOffsets(Math.max(1, radius), W);
     let bridged = 0;
-    for (const [, fi, fj, A, B] of edges) {
-      if (find(A) === find(B)) continue;
-      const ax = fi % W, ay = (fi - ax) / W, bx = fj % W, by = (fj - bx) / W;
+    // Weg prüfen: liefert die gekreuzten Teile oder null, wenn er durch gesperrtes Gebiet führt
+    const path = (ax, ay, bx, by) => {
       const len = Math.hypot(bx - ax, by - ay);
       const steps = Math.max(1, Math.ceil(len * 2));
       const crossed = new Set();
-      let ok = true;
       for (let s = 0; s <= steps; s++) {
         const x = Math.round(ax + ((bx - ax) * s) / steps), y = Math.round(ay + ((by - ay) * s) / steps);
         const q = y * W + x;
         if (mat[q]) crossed.add(lab[q]);
-        else if (allowed && !allowed[q]) { ok = false; break; }
+        else if (allowed && !allowed[q]) return null;
       }
-      if (!ok) continue;
+      return crossed;
+    };
+    const ends = new Map(); // Teil -> Endpunkte seiner Stege
+    const addEnd = (L, x, y) => { if (!ends.has(L)) ends.set(L, []); ends.get(L).push([x, y]); };
+    for (const [, fi, fj, A, B] of edges) {
+      if (find(A) === find(B)) continue;
+      const ax = fi % W, ay = (fi - ax) / W, bx = fj % W, by = (fj - bx) / W;
+      const crossed = path(ax, ay, bx, by);
+      if (!crossed) continue;
       drawBridge(mat, W, H, ax, ay, bx, by, disk, allowed, bridgeMask);
       segments.push([ax, ay, bx, by]);
+      addEnd(A, ax, ay);
+      addEnd(B, bx, by);
       for (const L of crossed) union(A, L);
       union(A, B);
       bridged++;
+    }
+
+    // Größere Innenteile zusätzlich halten (ein Steg allein lässt sie beim Malen wackeln):
+    // je angefangene extra.perPx Umfang ein Steg, mindestens 2, höchstens 6, möglichst gleichmäßig verteilt.
+    if (extra) {
+      const perim = new Float64Array(n + 1);
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          const i = y * W + x;
+          if (!mat[i] || !lab[i]) continue;
+          if (x === 0 || y === 0 || x === W - 1 || y === H - 1 || !mat[i - 1] || !mat[i + 1] || !mat[i - W] || !mat[i + W]) perim[lab[i]]++;
+        }
+      }
+      let frame = 1;
+      for (let k = 2; k <= n; k++) if (perim[k] > perim[frame]) frame = k;
+      const target = (L) => (L === frame || perim[L] < extra.minPerimPx ? 1 : Math.min(6, Math.max(2, Math.ceil(perim[L] / extra.perPx))));
+      const need = (L) => (ends.get(L) || []).length < target(L);
+      // alle Kandidaten (nicht nur der kürzeste je Teilepaar)
+      const cands = [];
+      const minCost = new Float64Array(n + 1).fill(Infinity);
+      const collect = (i, j) => {
+        if (allowed && (!allowed[i] || !allowed[j])) return;
+        const fi = F[i], fj = F[j];
+        const A = lab[fi], B = lab[fj];
+        if (A === B || !A || !B) return;
+        const cost = Math.sqrt(D[i]) + Math.sqrt(D[j]);
+        if (cost < minCost[A]) minCost[A] = cost;
+        if (cost < minCost[B]) minCost[B] = cost;
+        if (need(A) || need(B)) cands.push([cost, fi, fj, A, B]);
+      };
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          const i = y * W + x;
+          if (x < W - 1) collect(i, i + 1);
+          if (y < H - 1) collect(i, i + W);
+        }
+      }
+      cands.sort((a, b) => a[0] - b[0]);
+      const farEnough = (L, x, y) => {
+        const gap = (perim[L] / target(L)) * 0.45;
+        return (ends.get(L) || []).every(([ex2, ey2]) => Math.hypot(ex2 - x, ey2 - y) >= gap);
+      };
+      for (const [cost, fi, fj, A, B] of cands) {
+        const ax = fi % W, ay = (fi - ax) / W, bx = fj % W, by = (fj - bx) / W;
+        // nur kurze Stege (kaum länger als der kürzeste dieses Teils) und gleichmäßig verteilt
+        const forA = need(A) && cost <= Math.max(minCost[A] * 1.6, minCost[A] + 2 * radius) && farEnough(A, ax, ay);
+        const forB = need(B) && cost <= Math.max(minCost[B] * 1.6, minCost[B] + 2 * radius) && farEnough(B, bx, by);
+        if (!forA && !forB) continue;
+        // die andere Seite darf dabei keine Stege häufen (außer am Rahmen)
+        if (!forA && A !== frame && !farEnough(A, ax, ay)) continue;
+        if (!forB && B !== frame && !farEnough(B, bx, by)) continue;
+        if (isExcluded(fi, fj)) continue;
+        const crossed = path(ax, ay, bx, by);
+        if (!crossed || crossed.size > 2) continue;
+        drawBridge(mat, W, H, ax, ay, bx, by, disk, allowed, bridgeMask);
+        segments.push([ax, ay, bx, by]);
+        addEnd(A, ax, ay);
+        addEnd(B, bx, by);
+        bridged++;
+      }
     }
     const roots = new Set();
     for (let k = 1; k <= n; k++) roots.add(find(k));
@@ -466,7 +534,8 @@
     }
 
     // 3) Inseln mit Haltestegen anbinden
-    const res = addBridges(mat, W, H, radius, area, (edits && edits.removed) || [], radius + 3 / p, bridgeMask);
+    const res = addBridges(mat, W, H, radius, area, (edits && edits.removed) || [], radius + 3 / p, bridgeMask,
+      opts.extraBridges === false ? null : { perPx: 120 / p, minPerimPx: 40 / p });
 
     // 4) Ecken abrunden, damit der Marker nirgends hängen bleibt
     roundCorners(mat, W, H, opts);
