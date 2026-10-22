@@ -25,6 +25,7 @@ Die App passt das Bild automatisch an:
 - **Einstellungen** werden im Browser gespeichert und beim nächsten Besuch wiederhergestellt („Einstellungen zurücksetzen“ unter „Erweitert“).
 - **Übersichtlich:** Die Abschnitte links lassen sich per Klick auf die Überschrift einklappen, und die Vorschau bleibt beim Scrollen am Bildschirm stehen.
 - **Deutsch/Englisch:** Oben rechts per Flagge umschalten (Standard Deutsch, die Wahl wird gemerkt). Texte stehen in `i18n.js`, Laufzeittexte in `app.js` über `tr(deutsch, englisch)`.
+- **Anleitung:** Beim ersten Besuch erklärt ein Intro-Fenster, was die App macht, wie sie funktioniert und worauf man achten sollte. Über „Anleitung“ oben rechts lässt es sich jederzeit wieder öffnen.
 - **Breite Linien verschmälern** (Abschnitt 3, „Stift“): Wird ein Bild groß skaliert, werden auch seine Linien dick. Die App erkennt die übliche Linienstärke im Bild und zieht diese Linien auf Markerbreite + 0,5 mm zusammen. Deutlich dickere, ausgemalte Formen (Gesichter, Fledermäuse, Ringe) bleiben unverändert.
 - **Stege bearbeiten:** Klick auf einen Steg setzt ihn an die nächstbeste Stelle, Ziehen von Kante zu Kante setzt einen eigenen Steg.
 - **Klebelaschen** am Außenrand zum Festkleben mit Malerkrepp (optional, standardmäßig aus).

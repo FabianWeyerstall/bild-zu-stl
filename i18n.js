@@ -110,7 +110,7 @@
       for (const a in o) el.setAttribute(a, swap(o[a]));
     }
     document.title = 'Stencilio Print';
-    document.querySelectorAll('.lang button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
+    document.querySelectorAll('.lang button[data-lang]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
   }
 
   const listeners = [];
@@ -126,6 +126,6 @@
     },
   };
 
-  document.querySelectorAll('.lang button').forEach((b) => b.addEventListener('click', () => I18N.set(b.dataset.lang)));
+  document.querySelectorAll('.lang button[data-lang]').forEach((b) => b.addEventListener('click', () => I18N.set(b.dataset.lang)));
   translatePage();
 })();
