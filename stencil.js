@@ -307,6 +307,39 @@
       bridged++;
     }
 
+    // Rückfall: War der kürzeste Steg eines Teilepaars versperrt (z. B. an einer Kachelkante),
+    // alle übrigen Kandidaten der Länge nach durchprobieren, bis alles verbunden ist.
+    const separate = () => { const r0 = find(1); for (let k = 2; k <= n; k++) if (find(k) !== r0) return true; return false; };
+    if (separate()) {
+      const all = [];
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          const i = y * W + x;
+          for (const j of [x < W - 1 ? i + 1 : -1, y < H - 1 ? i + W : -1]) {
+            if (j < 0 || (allowed && (!allowed[i] || !allowed[j]))) continue;
+            const A = lab[F[i]], B = lab[F[j]];
+            if (A === B || !A || !B || find(A) === find(B)) continue;
+            all.push([Math.sqrt(D[i]) + Math.sqrt(D[j]), F[i], F[j], A, B]);
+          }
+        }
+      }
+      all.sort((a, b) => a[0] - b[0]);
+      for (const [, fi, fj, A, B] of all) {
+        if (find(A) === find(B) || isExcluded(fi, fj)) continue;
+        const ax = fi % W, ay = (fi - ax) / W, bx = fj % W, by = (fj - bx) / W;
+        const crossed = path(ax, ay, bx, by);
+        if (!crossed) continue;
+        drawBridge(mat, W, H, ax, ay, bx, by, disk, allowed, bridgeMask);
+        segments.push([ax, ay, bx, by]);
+        addEnd(A, ax, ay);
+        addEnd(B, bx, by);
+        for (const L of crossed) union(A, L);
+        union(A, B);
+        bridged++;
+        if (!separate()) break;
+      }
+    }
+
     // Größere Innenteile zusätzlich halten (ein Steg allein lässt sie beim Malen wackeln):
     // je angefangene extra.perPx Umfang ein Steg, mindestens 2, höchstens 6, möglichst gleichmäßig verteilt.
     if (extra) {
@@ -591,6 +624,83 @@
     };
   }
 
+  function absorbSlivers(mat, assign, W, H, cutX, cutY, nx, ny, r, margin) {
+    if (nx * ny < 2) return;
+    for (let iter = 0; iter < 3; iter++) {
+      let changed = false;
+      for (let row = 0; row < ny; row++) {
+        for (let col = 0; col < nx; col++) {
+          const t = row * nx + col;
+          const bx0 = Math.max(0, cutX[col] - margin), bx1 = Math.min(W, cutX[col + 1] + margin);
+          const by0 = Math.max(0, cutY[row] - margin), by1 = Math.min(H, cutY[row + 1] + margin);
+          const bw = bx1 - bx0, bh = by1 - by0;
+          const m = new Uint8Array(bw * bh);
+          for (let y = 0; y < bh; y++) {
+            for (let x = 0; x < bw; x++) {
+              const i = (y + by0) * W + x + bx0;
+              m[y * bw + x] = mat[i] && assign[i] === t ? 1 : 0;
+            }
+          }
+          const op = opening(m, bw, bh, r);
+          const thin = new Uint8Array(bw * bh);
+          let any = false;
+          for (let k = 0; k < bw * bh; k++) if (m[k] && !op[k]) { thin[k] = 1; any = true; }
+          if (!any) continue;
+          const { lab, n } = label(thin, bw, bh);
+          const comps = Array.from({ length: n + 1 }, () => []);
+          for (let k = 0; k < bw * bh; k++) if (lab[k]) comps[lab[k]].push(k);
+          for (let c = 1; c <= n; c++) {
+            // Nachbarkachel mit den meisten Berührungen
+            const votes = new Map();
+            for (const k of comps[c]) {
+              const x = (k % bw) + bx0, y = ((k - (k % bw)) / bw) + by0, i = y * W + x;
+              for (const q of [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, y > 0 ? i - W : -1, y < H - 1 ? i + W : -1]) {
+                if (q < 0 || !mat[q] || assign[q] === t) continue;
+                votes.set(assign[q], (votes.get(assign[q]) || 0) + 1);
+              }
+            }
+            let best = -1, bestV = 0;
+            for (const [u, v] of votes) if (v > bestV) { bestV = v; best = u; }
+            if (best < 0) continue;
+            for (const k of comps[c]) {
+              const x = (k % bw) + bx0, y = ((k - (k % bw)) / bw) + by0;
+              assign[y * W + x] = best;
+            }
+            changed = true;
+          }
+          // Kleine Reste, die jetzt nur noch an der Nachbarkachel hängen (z. B. neben einem Verbinder),
+          // ebenfalls abgeben. Größere abgetrennte Teile bekommen später einen Haltesteg.
+          for (let y = 0; y < bh; y++) {
+            for (let x = 0; x < bw; x++) {
+              const i = (y + by0) * W + x + bx0;
+              m[y * bw + x] = mat[i] && assign[i] === t ? 1 : 0;
+            }
+          }
+          const parts = label(m, bw, bh);
+          let main = 0;
+          for (let k = 1; k <= parts.n; k++) if (parts.sizes[k] > parts.sizes[main] || !main) main = k;
+          const small = (r * 5) * (r * 5);
+          for (let k = 0; k < bw * bh; k++) {
+            const L = parts.lab[k];
+            if (!L || L === main || parts.sizes[L] >= small) continue;
+            const x = (k % bw) + bx0, y = ((k - (k % bw)) / bw) + by0, i = y * W + x;
+            for (const q of [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, y > 0 ? i - W : -1, y < H - 1 ? i + W : -1]) {
+              if (q >= 0 && mat[q] && assign[q] !== t) { parts.sizes[L] = -assign[q] - 1; break; }
+            }
+          }
+          for (let k = 0; k < bw * bh; k++) {
+            const L = parts.lab[k];
+            if (!L || parts.sizes[L] >= 0) continue;
+            const x = (k % bw) + bx0, y = ((k - (k % bw)) / bw) + by0;
+            assign[y * W + x] = -parts.sizes[L] - 1;
+            changed = true;
+          }
+        }
+      }
+      if (!changed) break;
+    }
+  }
+
   // Umriss der Schablone beim Materialsparen: SAVE.rimMM voller Rand um alle Öffnungen,
   // Buchten bis 2 × SAVE.closeMM geschlossen, eingeschlossene Lücken gefüllt. Liegen Motivteile
   // weit auseinander, verbinden breite gerade Streifen sie zu einem Teil.
@@ -742,7 +852,8 @@
       R = (f * opts.knobR) / p; NW = (f * opts.neckW) / p / 2; NL = (f * opts.neckL) / p;
       reach = NL + 2 * R;
     };
-    const margin = 1.0 / p;
+    // Verbinder halten mindestens einen Mindeststeg Abstand zu Öffnungen, sonst bleiben dünne Reste
+    const margin = Math.max(1, opts.minStegMM || 2) / p;
     const edgeKeep = R + 3 / p;
     const spacing = opts.knobSpacing / p;
     const knobs = [];
@@ -832,6 +943,12 @@
         }
       }
     }
+
+    // Dünne Reste an den Schnitten: Wo der Schnitt ein Stück Material schmaler als den Mindeststeg
+    // abtrennt (Streifen zwischen Schnitt und Öffnung, spitze Keile, enge Stellen am Verbinder),
+    // kommt dieses Stück zur Nachbarkachel, an der es breit anliegt. Hängt ein Teil danach nur noch
+    // über den Schnitt, bekommt es unten beim Anbinden einen richtigen Haltesteg.
+    absorbSlivers(mat, assign, W, H, cutX, cutY, nx, ny, Math.max(1, (0.8 * (opts.minStegMM || 2)) / p / 2), Math.ceil(reach + 4));
 
     // Klebelaschen an den Außenkanten, je Kachel mindestens eine pro Außenkante
     const tm = opts.saveMaterial ? 0 : st.tab || 0;
